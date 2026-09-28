@@ -349,7 +349,7 @@ $$;
 create function private.require_profile() returns public.profiles
 language plpgsql stable security definer set search_path = public as $$
 declare
-  p profiles;
+  p public.profiles;
 begin
   select * into p from profiles where id = auth.uid();
   if p.id is null then
@@ -479,7 +479,7 @@ begin
   first_user := not exists (select 1 from profiles);
   insert into profiles (id, login, display_name, role)
   values (new.id, meta ->> 'login', btrim(meta ->> 'display_name'),
-          case when first_user then 'superadmin'::user_role else 'citizen'::user_role end);
+          case when first_user then 'superadmin'::public.user_role else 'citizen'::public.user_role end);
   perform private.notify(new.id, 'welcome', '{}', '/services/citizenship');
   return new;
 end;
@@ -489,7 +489,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function private.handle_new_user();
 
-create function private.can_review(p profiles, a applications) returns boolean
+create function private.can_review(p public.profiles, a public.applications) returns boolean
 language sql stable as $$
   select p.role = 'superadmin'
     or (p.role in ('official', 'president')
@@ -532,7 +532,7 @@ $$;
 create function public.update_profile(p_display_name text, p_city text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
 begin
   if private.guard(me.id, array[p_display_name, p_city]) then
     return jsonb_build_object('ok', false, 'error', 'E_FORBIDDEN');
@@ -550,8 +550,8 @@ $$;
 create function public.submit_application(p_service text, p_target text default null, p_data jsonb default '{}')
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  svc services;
+  me public.profiles := private.require_profile();
+  svc public.services;
   target text;
   app_id bigint;
 begin
@@ -605,7 +605,7 @@ begin
       if private.has_doc(me.id, 'intl_passport', me.country_code) then raise exception 'E_ALREADY_HAS'; end if;
     when 'driver_license', 'psyals' then
       if not private.has_doc(me.id, 'passport', me.country_code) then raise exception 'E_NEED_PASSPORT'; end if;
-      if private.has_doc(me.id, p_service::doc_type, me.country_code) then raise exception 'E_ALREADY_HAS'; end if;
+      if private.has_doc(me.id, p_service::public.doc_type, me.country_code) then raise exception 'E_ALREADY_HAS'; end if;
     when 'visa' then
       if me.country_code is null then raise exception 'E_NOT_CITIZEN'; end if;
       if not private.has_doc(me.id, 'intl_passport', me.country_code) then raise exception 'E_NEED_INTL_PASSPORT'; end if;
@@ -640,8 +640,8 @@ $$;
 create function public.update_application(p_id bigint, p_data jsonb)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  a applications;
+  me public.profiles := private.require_profile();
+  a public.applications;
 begin
   select * into a from applications where id = p_id and user_id = me.id for update;
   if a.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -663,8 +663,8 @@ $$;
 create function public.cancel_application(p_id bigint)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  a applications;
+  me public.profiles := private.require_profile();
+  a public.applications;
 begin
   select * into a from applications where id = p_id and user_id = me.id for update;
   if a.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -680,10 +680,10 @@ $$;
 create function public.review_application(p_id bigint, p_decision text, p_comment text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  a applications;
-  applicant profiles;
-  new_status app_status;
+  me public.profiles := private.require_profile();
+  a public.applications;
+  applicant public.profiles;
+  new_status public.app_status;
   old_country text;
 begin
   select * into a from applications where id = p_id for update;
@@ -713,7 +713,7 @@ begin
       when 'change_citizenship' then
         old_country := applicant.country_code;
         if old_country is not null then
-          perform private.revoke_docs(applicant.id, array['passport', 'intl_passport', 'psyals', 'driver_license']::doc_type[],
+          perform private.revoke_docs(applicant.id, array['passport', 'intl_passport', 'psyals', 'driver_license']::public.doc_type[],
                                       old_country, 'Смена гражданства');
         end if;
         update profiles set country_code = a.target_country, city = nullif(a.data ->> 'city', ''),
@@ -726,7 +726,7 @@ begin
                                        jsonb_build_object('city', a.data ->> 'city'));
       when 'passport_reissue' then
         if applicant.country_code is distinct from a.target_country then raise exception 'E_NOT_CITIZEN'; end if;
-        perform private.revoke_docs(applicant.id, array['passport']::doc_type[], a.target_country, 'Замена паспорта');
+        perform private.revoke_docs(applicant.id, array['passport']::public.doc_type[], a.target_country, 'Замена паспорта');
         perform private.issue_document(applicant.id, 'passport', a.target_country, a.id);
       when 'intl_passport' then
         perform private.issue_document(applicant.id, 'intl_passport', a.target_country, a.id, interval '5 years');
@@ -768,8 +768,8 @@ $$;
 create function public.revoke_document(p_id bigint, p_reason text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  d documents;
+  me public.profiles := private.require_profile();
+  d public.documents;
 begin
   select * into d from documents where id = p_id for update;
   if d.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -789,8 +789,8 @@ $$;
 create function public.grant_coins(p_user uuid, p_amount int, p_comment text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  target profiles;
+  me public.profiles := private.require_profile();
+  target public.profiles;
 begin
   select * into target from profiles where id = p_user;
   if target.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -805,7 +805,7 @@ begin
   if private.guard(me.id, array[p_comment]) then
     return jsonb_build_object('ok', false, 'error', 'E_FORBIDDEN');
   end if;
-  perform private.move_coins(p_user, p_amount, case when p_amount > 0 then 'grant' else 'withdraw' end::tx_type,
+  perform private.move_coins(p_user, p_amount, case when p_amount > 0 then 'grant' else 'withdraw' end::public.tx_type,
                              null, null, me.id, nullif(btrim(coalesce(p_comment, '')), ''));
   perform private.notify(p_user, 'coins', jsonb_build_object('amount', p_amount, 'comment', p_comment), '/cabinet/wallet');
   perform private.audit(me.id, 'grant_coins', p_user::text, jsonb_build_object('amount', p_amount, 'comment', p_comment));
@@ -818,7 +818,7 @@ create function public.issue_fine(p_user uuid, p_amount int, p_reason text, p_ki
                                   p_country text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
   country text;
   fine_id bigint;
 begin
@@ -843,8 +843,8 @@ $$;
 create function public.pay_fine(p_id bigint)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  f fines;
+  me public.profiles := private.require_profile();
+  f public.fines;
 begin
   select * into f from fines where id = p_id and user_id = me.id for update;
   if f.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -858,8 +858,8 @@ $$;
 create function public.cancel_fine(p_id bigint)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  f fines;
+  me public.profiles := private.require_profile();
+  f public.fines;
 begin
   select * into f from fines where id = p_id for update;
   if f.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -878,7 +878,7 @@ $$;
 create function public.post_news(p_kind public.news_kind, p_title text, p_body text, p_country text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
   country text;
   news_id bigint;
 begin
@@ -903,8 +903,8 @@ $$;
 create function public.delete_news(p_id bigint)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  n news;
+  me public.profiles := private.require_profile();
+  n public.news;
 begin
   select * into n from news where id = p_id;
   if n.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -919,7 +919,7 @@ $$;
 create function public.create_election(p_title text, p_description text, p_country text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
   country text;
   el_id bigint;
 begin
@@ -940,8 +940,8 @@ $$;
 create function public.add_candidate(p_election bigint, p_user uuid, p_name text, p_program text default '')
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  e elections;
+  me public.profiles := private.require_profile();
+  e public.elections;
   cand_name text := p_name;
   cand_id bigint;
 begin
@@ -966,8 +966,8 @@ $$;
 create function public.remove_candidate(p_id bigint)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  e elections;
+  me public.profiles := private.require_profile();
+  e public.elections;
 begin
   select el.* into e from elections el join candidates c on c.election_id = el.id where c.id = p_id;
   if e.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -981,8 +981,8 @@ $$;
 create function public.set_election_status(p_id bigint, p_status public.election_status)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  e elections;
+  me public.profiles := private.require_profile();
+  e public.elections;
 begin
   select * into e from elections where id = p_id for update;
   if e.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -1005,8 +1005,8 @@ $$;
 create function public.vote(p_election bigint, p_candidate bigint)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  e elections;
+  me public.profiles := private.require_profile();
+  e public.elections;
 begin
   select * into e from elections where id = p_election;
   if e.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -1027,7 +1027,7 @@ returns table (candidate_id bigint, votes bigint)
 language plpgsql stable security definer set search_path = public as $$
 #variable_conflict use_column
 declare
-  e elections;
+  e public.elections;
 begin
   select * into e from elections where id = p_id;
   if e.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -1053,7 +1053,7 @@ create function public.wanted_create(p_name text, p_description text, p_reward i
                                      p_country text default null, p_linked_user uuid default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
   country text;
   w_id bigint;
 begin
@@ -1075,8 +1075,8 @@ $$;
 create function public.wanted_set_active(p_id bigint, p_active boolean)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  w wanted;
+  me public.profiles := private.require_profile();
+  w public.wanted;
 begin
   select * into w from wanted where id = p_id;
   if w.id is null then raise exception 'E_NOT_FOUND'; end if;
@@ -1103,7 +1103,7 @@ $$;
 create function public.mark_notifications_read(p_ids bigint[] default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
 begin
   update notifications set read_at = now()
   where user_id = me.id and read_at is null and (p_ids is null or id = any (p_ids));
@@ -1115,7 +1115,7 @@ $$;
 create function public.admin_set_role(p_user uuid, p_role public.user_role, p_gov_country text default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
 begin
   if me.role <> 'superadmin' then raise exception 'E_FORBIDDEN_ACTION'; end if;
   if p_user = me.id and p_role <> 'superadmin' then raise exception 'E_SELF'; end if;
@@ -1134,8 +1134,8 @@ $$;
 create function public.president_set_official(p_user uuid, p_on boolean)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  target profiles;
+  me public.profiles := private.require_profile();
+  target public.profiles;
 begin
   if me.role <> 'president' then raise exception 'E_FORBIDDEN_ACTION'; end if;
   select * into target from profiles where id = p_user;
@@ -1158,7 +1158,7 @@ $$;
 create function public.admin_set_banned(p_user uuid, p_banned boolean)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
 begin
   if me.role <> 'superadmin' then raise exception 'E_FORBIDDEN_ACTION'; end if;
   if p_user = me.id then raise exception 'E_SELF'; end if;
@@ -1172,14 +1172,14 @@ $$;
 create function public.admin_set_country(p_user uuid, p_country text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
-  target profiles;
+  me public.profiles := private.require_profile();
+  target public.profiles;
 begin
   if me.role <> 'superadmin' then raise exception 'E_FORBIDDEN_ACTION'; end if;
   select * into target from profiles where id = p_user for update;
   if target.id is null then raise exception 'E_NOT_FOUND'; end if;
   if target.country_code is not null and target.country_code is distinct from p_country then
-    perform private.revoke_docs(p_user, array['passport', 'intl_passport', 'psyals', 'driver_license']::doc_type[],
+    perform private.revoke_docs(p_user, array['passport', 'intl_passport', 'psyals', 'driver_license']::public.doc_type[],
                                 target.country_code, 'Решение администрации');
   end if;
   update profiles set country_code = p_country where id = p_user;
@@ -1195,7 +1195,7 @@ $$;
 create function public.admin_set_setting(p_key text, p_value text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
 begin
   if me.role <> 'superadmin' then raise exception 'E_FORBIDDEN_ACTION'; end if;
   if p_key not in ('invite_code', 'forbidden_fine') then raise exception 'E_BAD_DATA'; end if;
@@ -1209,7 +1209,7 @@ $$;
 create function public.admin_update_service(p_code text, p_fee int, p_active boolean)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  me profiles := private.require_profile();
+  me public.profiles := private.require_profile();
 begin
   if me.role <> 'superadmin' then raise exception 'E_FORBIDDEN_ACTION'; end if;
   if p_fee is null or p_fee < 0 then raise exception 'E_BAD_AMOUNT'; end if;

@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Сине-белая гамма в духе госпортала, но своя. */
+@theme {
+  --color-brand-50: #eef5ff;
+  --color-brand-100: #d9e8ff;
+  --color-brand-200: #b6d2ff;
+  --color-brand-500: #2f7cf6;
+  --color-brand-600: #0b5bd3;
+  --color-brand-700: #0a4aab;
+  --color-brand-900: #0b2a5b;
+  --color-accent-500: #ee3f58;
+  --color-ink: #0b1f35;
+  --color-muted: #66727f;
+  --font-sans: "Lato", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  background: #f1f4f9;
+  color: var(--color-ink);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}

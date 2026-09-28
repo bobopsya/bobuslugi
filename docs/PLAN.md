@@ -1,5 +1,9 @@
 # Бобуслуги — план разработки
 
+> **Изменение архитектуры.** По просьбе пользователя хостинг — **GitHub Pages + Supabase**, а не Next.js на Vercel.
+> Сайт — статическое SPA (Vite + React). Серверная логика — SQL-функции и RLS в Supabase (`supabase/migrations/`).
+> Все 9 этапов реализованы в первой версии. Актуальное описание — в `README.md`.
+
 ## Контекст
 Делаем «Госуслуги» для вымышленной планеты Асей (лор: https://volcano-structure-35d.notion.site/34c969ffd00480c4bf5dd8c4cd50c4f0).
 Репозиторий `bobopsya/bobuslugi` пустой, ветка `claude/gifted-planck-ydloji` — начинаем с нуля.

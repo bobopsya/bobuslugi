@@ -386,7 +386,7 @@ begin
 end;
 $$;
 
--- Номер документа из лорных чисел: например «1234 321 123 4321 …».
+-- Номер документа из шести лорных чисел: например «1234 321 123 4321 321 1234».
 -- Стыки этих чисел никогда не дают запрещённых сочетаний.
 create function private.gen_doc_number() returns text
 language plpgsql volatile security definer set search_path = public as $$
@@ -398,8 +398,8 @@ begin
   loop
     result := '';
     for i in 1..6 loop
+      if i > 1 then result := result || ' '; end if;
       result := result || parts[1 + floor(random() * 4)::int];
-      if i = 2 then result := result || ' '; end if;
     end loop;
     exit when not exists (select 1 from documents where number = result);
   end loop;

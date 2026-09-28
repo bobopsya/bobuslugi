@@ -100,7 +100,7 @@ describe('роли и гражданство', () => {
     const docs = await sql<{ type: string; number: string }>('select type, number from documents where user_id = $1', [alice.id])
     expect(docs).toHaveLength(1)
     expect(docs[0].type).toBe('passport')
-    expect(docs[0].number).toMatch(/^(123|321|1234|4321)+ (123|321|1234|4321)+$/)
+    expect(docs[0].number).toMatch(/^((123|321|1234|4321) ){5}(123|321|1234|4321)$/)
   })
 
   it('повторно подать на гражданство нельзя', async () => {

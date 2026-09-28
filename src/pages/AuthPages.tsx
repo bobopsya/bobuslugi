@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { Button, Card, ErrorBox, Field, Input } from '../components/ui'
 import { ApiError } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -22,7 +22,6 @@ export function LoginPage() {
   const { t } = useI18n()
   const { signIn, session } = useAuth()
   const [params] = useSearchParams()
-  const navigate = useNavigate()
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<unknown>(null)
@@ -36,8 +35,8 @@ export function LoginPage() {
     setPending(true)
     setError(null)
     try {
+      // Переход в кабинет сделает <Navigate> выше, как только появится сессия
       await signIn(login, password)
-      navigate(next, { replace: true })
     } catch (err) {
       setError(err)
     } finally {
@@ -72,7 +71,6 @@ export function LoginPage() {
 export function RegisterPage() {
   const { t } = useI18n()
   const { signUp, session } = useAuth()
-  const navigate = useNavigate()
   const [form, setForm] = useState({ login: '', displayName: '', password: '', password2: '', invite: '' })
   const [error, setError] = useState<unknown>(null)
   const [pending, setPending] = useState(false)
@@ -94,7 +92,6 @@ export function RegisterPage() {
     setPending(true)
     try {
       await signUp({ login: form.login.trim(), password: form.password, displayName: form.displayName, invite: form.invite.trim() || undefined })
-      navigate('/', { replace: true })
     } catch (err) {
       setError(err)
     } finally {

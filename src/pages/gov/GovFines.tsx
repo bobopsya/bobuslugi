@@ -1,4 +1,6 @@
 import { FineStatusBadge } from '../../components/badges'
+import { PdfButton } from '../../components/PdfButton'
+import { pdf, usePdfCtx } from '../../lib/pdf/usePdf'
 import { Button, Empty, ErrorBox, Loading } from '../../components/ui'
 import { callRpc, useAction } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
@@ -12,6 +14,7 @@ export function GovFines() {
   const profileOf = useProfileMap()
   const countryName = useCountryName()
   const cancel = useAction((id: number) => callRpc('cancel_fine', { p_id: id }))
+  const ctx = usePdfCtx()
   if (isLoading) return <Loading />
   const list = (data ?? []).filter((f) => f.user_id !== profile?.id || profile.role === 'superadmin')
   if (!list.length) return <Empty />
@@ -31,6 +34,7 @@ export function GovFines() {
                 {t(`fineKind.${f.kind}`)}: {f.reason} · {f.country_code ? countryName(f.country_code, lang === 'psy') : t('common.planet')} · {date(f.created_at)}
               </div>
             </div>
+            <PdfButton variant="ghost" label={t('pdf.fine')} make={async () => (await pdf()).finePdf(ctx, f)} />
             {f.status === 'unpaid' && (
               <Button variant="ghost" onClick={() => confirm(t('common.confirm')) && cancel.run(f.id)}>
                 {t('gov.cancelFine')}

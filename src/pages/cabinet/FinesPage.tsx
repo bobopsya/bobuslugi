@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { FineStatusBadge } from '../../components/badges'
 import { CabinetNav } from '../../components/CabinetNav'
+import { PdfButton } from '../../components/PdfButton'
+import { pdf, usePdfCtx } from '../../lib/pdf/usePdf'
 import { Button, Empty, ErrorBox, Loading, PageTitle } from '../../components/ui'
 import { callRpc, useAction } from '../../lib/api'
 import { useI18n } from '../../lib/i18n'
@@ -12,6 +14,7 @@ export function FinesPage() {
   const countryName = useCountryName()
   const [payingId, setPayingId] = useState<number | null>(null)
   const pay = useAction((id: number) => callRpc('pay_fine', { p_id: id }))
+  const ctx = usePdfCtx()
 
   return (
     <>
@@ -36,6 +39,7 @@ export function FinesPage() {
                   {f.country_code ? countryName(f.country_code, lang === 'psy') : t('common.planet')} · {date(f.created_at)}
                 </div>
               </div>
+              <PdfButton variant="ghost" label={t('pdf.fine')} make={async () => (await pdf()).finePdf(ctx, f)} />
               {f.status === 'unpaid' && (
                 <Button
                   loading={pay.pending && payingId === f.id}

@@ -20,6 +20,7 @@ import { LorePage } from './pages/LorePage'
 import { NewsItemPage, NewsPage } from './pages/NewsPage'
 import { NotFoundPage, SetupPage } from './pages/MiscPages'
 import { ServicePage, ServicesPage } from './pages/ServicesPage'
+import { VerifyPage } from './pages/VerifyPage'
 import { WantedPage } from './pages/WantedPage'
 
 const auth = (el: React.ReactNode) => <RequireAuth>{el}</RequireAuth>
@@ -42,6 +43,8 @@ export function App() {
         <Route path="countries" element={<CountriesPage />} />
         <Route path="countries/:code" element={<CountryPage />} />
         <Route path="lore" element={<LorePage />} />
+        <Route path="verify" element={<VerifyPage />} />
+        <Route path="verify/:number" element={<VerifyPage />} />
 
         <Route path="cabinet" element={auth(<CabinetPage />)} />
         <Route path="cabinet/documents" element={auth(<DocumentsPage />)} />

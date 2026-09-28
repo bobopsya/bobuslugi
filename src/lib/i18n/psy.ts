@@ -206,5 +206,17 @@ export const psy: DeepPartial<Dict> = {
   },
   elections: { vote: 'Голоснуть', voted: 'Голос учтёнпся, сапс' },
   wanted: { title: 'Разыскивапся', debtors: 'Должники по псяштрафам' },
+  docflow: {
+    next: 'Га дальше',
+    oathAccept: 'Клянусь, асей',
+    startExam: 'Га на экзамен',
+    examPassed: 'Сиф! Экзамен сдан: {score} из {total}.',
+    examFailed: 'Не сиф: {score} из {total}. Пересдача через час, паса.',
+    receive: 'Га получать',
+    readyTitle: 'Бободокумент готов, сиф!',
+    signHere: 'Распишипся тут',
+    takePhoto: 'Сфоткапся',
+  },
+  pdf: { download: 'Скачапся PDF' },
   notFound: { title: 'Страница ушла в Мигрантское окно', text: 'Такой страницы на Асее нет, паса.', home: 'Га на главпся' },
 }

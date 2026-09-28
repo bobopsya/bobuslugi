@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatDate, formatNumber, LORE_NUMBERS, psyAdd, toLoreNumber } from '../../src/lib/lore'
+import { latinFileName, mrz } from '../../src/lib/translit'
 
 describe('toLoreNumber', () => {
   it('лорные числа остаются собой', () => {
@@ -45,5 +46,25 @@ describe('psyAdd', () => {
   it('ответ всегда лорный', () => {
     expect(LORE_NUMBERS).toContain(psyAdd(123, 123))
     expect(LORE_NUMBERS).toContain(psyAdd(1234, 123))
+  })
+})
+
+describe('translit', () => {
+  it('имена файлов латиницей', () => {
+    expect(latinFileName('Решение_5.pdf')).toBe('Reshenie_5.pdf')
+    expect(latinFileName('Бобопаспорт_1234 321.pdf')).toBe('Bobopasport_1234_321.pdf')
+  })
+
+  it('MRZ паспорта', () => {
+    const [l1, l2] = mrz({
+      type: 'passport',
+      country_code: 'BOBO',
+      number: '1234 321 123 4321 321 1234',
+      data: { last_name: 'Псянская', first_name: 'Алиса', sex: 'Ж', birth_date: '2010-05-24' },
+    } as never)
+    expect(l1).toMatch(/^PNBOBPSIANSKAIA<<ALISA<+$/)
+    expect(l1).toHaveLength(44)
+    expect(l2.startsWith('123432112343')).toBe(true)
+    expect(l2).toContain('BOB100524F')
   })
 })

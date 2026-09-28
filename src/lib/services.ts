@@ -148,3 +148,18 @@ export function resolveTarget(mode: TargetMode, fixed: string | null, p: Profile
   if (mode === 'fixed') return fixed
   return chosen
 }
+
+const ANKETA_ORDER = ['last_name', 'first_name', 'patronymic', 'sex', 'birth_date', 'birth_place']
+
+/** Поля заявления в понятном порядке: анкета, поля услуги, остальное, присяга в конце. */
+export function orderedEntries(code: string, data: Record<string, string>): [string, string][] {
+  const fieldOrder = serviceDef(code)?.fields.map((f) => f.name) ?? []
+  const rank = (k: string) => {
+    if (k === 'oath') return 1000
+    const a = ANKETA_ORDER.indexOf(k)
+    if (a >= 0) return a
+    const f = fieldOrder.indexOf(k)
+    return f >= 0 ? 100 + f : 500
+  }
+  return Object.entries(data ?? {}).sort(([a], [b]) => rank(a) - rank(b))
+}

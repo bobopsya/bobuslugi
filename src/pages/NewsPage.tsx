@@ -1,5 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { NewsCard } from '../components/NewsCard'
+import { PdfButton } from '../components/PdfButton'
+import { pdf, usePdfCtx } from '../lib/pdf/usePdf'
 import { Badge, Button, Card, Empty, ErrorBox, Loading, PageTitle } from '../components/ui'
 import { callRpc, useAction } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -37,6 +39,7 @@ export function NewsItemPage() {
   const countryName = useCountryName()
   const profileOf = useProfileMap()
   const del = useAction(() => callRpc('delete_news', { p_id: Number(id) }), () => navigate('/news'))
+  const ctx = usePdfCtx()
 
   if (isLoading) return <Loading />
   if (!item) return <NotFoundPage />
@@ -62,6 +65,9 @@ export function NewsItemPage() {
             {t('news.by')}: <span className="font-bold text-ink">{author.display_name}</span> · {t(`roles.${author.role}`)}
           </div>
         )}
+        <div className="mt-4">
+          <PdfButton label={item.kind === 'decree' ? t('pdf.decree') : undefined} make={async () => (await pdf()).decreePdf(ctx, item)} />
+        </div>
         {canDelete && (
           <div className="mt-4">
             <ErrorBox error={del.error} />

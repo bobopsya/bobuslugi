@@ -33,16 +33,18 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Запуск локального Supabase
-        run: npx supabase start -x studio,imgproxy,storage-api,edge-runtime,logflare,vector,realtime,mailpit,postgres-meta,supavisor
+        run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,mailpit,postgres-meta,supavisor
       - name: Ключи локального Supabase
         run: |
           npx supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' | sed -e 's/^API_URL=/VITE_SUPABASE_URL=/' -e 's/^ANON_KEY=/VITE_SUPABASE_ANON_KEY=/' | tr -d '"' > .env.local
           cat .env.local | cut -c1-40
-      - name: Миграция применяется при пустом search_path (как в SQL Editor)
+      - name: Миграции применяются при пустом search_path (как в SQL Editor)
         run: |
           DB=postgresql://postgres:postgres@127.0.0.1:54322/postgres
           psql "$DB" -q -v ON_ERROR_STOP=1 -f supabase/uninstall.sql
-          PGOPTIONS="-c search_path=" psql "$DB" -q -v ON_ERROR_STOP=1 -1 -f supabase/migrations/20260928000001_init.sql
+          for f in supabase/migrations/*.sql; do
+            PGOPTIONS="-c search_path=" psql "$DB" -q -v ON_ERROR_STOP=1 -1 -f "$f"
+          done
       - run: npm run test:db
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e

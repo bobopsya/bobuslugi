@@ -1,4 +1,6 @@
 import { CabinetNav } from '../../components/CabinetNav'
+import { PdfButton } from '../../components/PdfButton'
+import { pdf, usePdfCtx } from '../../lib/pdf/usePdf'
 import { Card, Empty, Loading, PageTitle } from '../../components/ui'
 import { useAuth } from '../../lib/auth'
 import { useI18n } from '../../lib/i18n'
@@ -9,6 +11,7 @@ export function WalletPage() {
   const { t, coins, date } = useI18n()
   const { profile } = useAuth()
   const { data, isLoading } = useMyTransactions()
+  const ctx = usePdfCtx()
   return (
     <>
       <PageTitle>{t('cabinet.wallet')}</PageTitle>
@@ -20,6 +23,11 @@ export function WalletPage() {
         </div>
         <p className="mt-3 text-sm text-white/80">{t('cabinet.coinsInfo')}</p>
       </Card>
+      {profile && (data?.length ?? 0) > 0 && (
+        <div className="mb-4">
+          <PdfButton label={t('pdf.statement')} make={async () => (await pdf()).statementPdf(ctx, profile, data ?? [])} />
+        </div>
+      )}
       {isLoading ? (
         <Loading />
       ) : data?.length ? (
@@ -42,6 +50,7 @@ export function WalletPage() {
                   {t('cabinet.balanceAfter')}: {coins(tx.balance_after)}
                 </div>
               </div>
+              <PdfButton variant="ghost" label={t('pdf.receiptShort')} make={async () => (await pdf()).receiptPdf(ctx, tx)} />
             </div>
           ))}
         </div>

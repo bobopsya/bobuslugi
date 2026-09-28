@@ -1,5 +1,6 @@
 import { useI18n } from '../lib/i18n'
 import { useCountryName } from '../lib/queries'
+import { useSignedUrl } from '../lib/storage'
 import type { DocumentRow, Profile } from '../lib/types'
 import { cx } from './ui'
 
@@ -17,6 +18,8 @@ export function DocumentCard({ doc, holder, action }: { doc: DocumentRow; holder
   const expired = doc.valid_until && new Date(doc.valid_until) < new Date()
   const invalid = Boolean(doc.revoked_at) || Boolean(expired)
   const extra = doc.data?.category ?? doc.data?.purpose ?? doc.data?.city
+  const photo = useSignedUrl('photos', doc.photo_path)
+  const name = [doc.data?.last_name, doc.data?.first_name, doc.data?.patronymic].filter(Boolean).join(' ') || holder?.display_name
 
   return (
     <div
@@ -40,11 +43,20 @@ export function DocumentCard({ doc, holder, action }: { doc: DocumentRow; holder
           </text>
         </svg>
       </div>
-      {holder && <div className="mt-4 text-lg font-bold">{holder.display_name}</div>}
-      <div className="mt-3 font-mono text-lg tracking-wider" data-testid="doc-number">
-        {doc.number}
+      <div className="mt-4 flex items-start gap-4">
+        {doc.photo_path && (
+          <div className="aspect-[3/4] w-16 shrink-0 overflow-hidden rounded bg-white/20 ring-1 ring-white/40">
+            {photo.data && <img src={photo.data} alt="" className="h-full w-full object-cover" />}
+          </div>
+        )}
+        <div className="min-w-0">
+          {name && <div className="text-lg font-bold">{name}</div>}
+          <div className="mt-1 font-mono text-lg tracking-wider" data-testid="doc-number">
+            {doc.number}
+          </div>
+          {extra && <div className="mt-1 text-sm text-white/80">{extra}</div>}
+        </div>
       </div>
-      {extra && <div className="mt-1 text-sm text-white/80">{extra}</div>}
       <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-white/80">
         <span>
           {t('cabinet.issued')}: {date(doc.issued_at)}

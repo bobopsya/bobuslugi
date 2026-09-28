@@ -2,7 +2,8 @@ import { AppStatusBadge } from './badges'
 import { Card, Row } from './ui'
 import { useI18n } from '../lib/i18n'
 import { useCountryName, useProfileMap } from '../lib/queries'
-import { serviceDef } from '../lib/services'
+import { orderedEntries, serviceDef } from '../lib/services'
+import { useSignedUrl } from '../lib/storage'
 import type { Application } from '../lib/types'
 
 export function ApplicationDetails({ app, showApplicant }: { app: Application; showApplicant?: boolean }) {
@@ -12,10 +13,14 @@ export function ApplicationDetails({ app, showApplicant }: { app: Application; s
   const def = serviceDef(app.service_code)
   const applicant = profileOf(app.user_id)
   const reviewer = profileOf(app.reviewer_id)
+  const photo = useSignedUrl('photos', app.photo_path)
+  const sig = useSignedUrl('signatures', app.signature_path)
   const fieldLabel = (name: string) => {
     const f = def?.fields.find((x) => x.name === name)
     return t(`fields.${f?.label ?? name}`)
   }
+  const fieldValue = (name: string, v: string) =>
+    name === 'birth_date' ? date(v) : name === 'sex' ? t(`docflow.sex.${v}`) : name === 'oath' ? t('docflow.oathAccept') : v
   return (
     <Card>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -35,12 +40,23 @@ export function ApplicationDetails({ app, showApplicant }: { app: Application; s
           )}
         </Row>
       )}
+      {(photo.data || sig.data) && (
+        <div className="mb-3 flex items-end gap-4">
+          {photo.data && <img src={photo.data} alt="" data-testid="application-photo" className="h-40 w-30 rounded-lg object-cover ring-1 ring-slate-300" />}
+          {sig.data && (
+            <div>
+              <div className="text-xs text-muted">{t('docflow.applicantSignature')}</div>
+              <img src={sig.data} alt="" className="h-12 max-w-48 object-contain" />
+            </div>
+          )}
+        </div>
+      )}
       <Row label={t('common.country')}>{countryName(app.target_country, lang === 'psy')}</Row>
       <Row label={t('cabinet.submittedAt')}>{date(app.created_at, true)}</Row>
       <Row label={t('cabinet.fee')}>{app.fee > 0 ? coins(app.fee) : t('catalog.free')}</Row>
-      {Object.entries(app.data ?? {}).map(([k, v]) => (
-        <Row key={k} label={fieldLabel(k)}>
-          <span className="whitespace-pre-wrap font-normal">{String(v)}</span>
+      {orderedEntries(app.service_code, app.data).map(([k, v]) => (
+        <Row key={k} label={k === 'oath' ? t('docflow.step.oath') : fieldLabel(k)}>
+          <span className="whitespace-pre-wrap font-normal">{fieldValue(k, String(v))}</span>
         </Row>
       ))}
       {app.reviewed_at && (

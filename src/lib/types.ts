@@ -1,5 +1,5 @@
 export type Role = 'citizen' | 'official' | 'president' | 'superadmin'
-export type AppStatus = 'submitted' | 'needs_info' | 'approved' | 'rejected' | 'cancelled'
+export type AppStatus = 'submitted' | 'needs_info' | 'approved' | 'rejected' | 'cancelled' | 'appointment' | 'producing' | 'issued'
 export type DocType = 'passport' | 'intl_passport' | 'driver_license' | 'psyals' | 'residence_permit' | 'visa'
 export type FineKind = 'fine' | 'tax' | 'auto_forbidden'
 export type FineStatus = 'unpaid' | 'paid' | 'cancelled'
@@ -18,6 +18,7 @@ export type Profile = {
   city: string | null
   balance: number
   banned: boolean
+  signature_path: string | null
   created_at: string
 }
 
@@ -42,6 +43,9 @@ export type ServiceRow = {
   fee: number
   active: boolean
   sort: number
+  needs_photo: boolean
+  needs_exam: boolean
+  doc_type: DocType | null
 }
 
 export type Application = {
@@ -57,6 +61,15 @@ export type Application = {
   reviewed_at: string | null
   created_at: string
   updated_at: string
+  photo_path: string | null
+  signature_path: string | null
+  slot_id: number | null
+  exam_attempt_id: number | null
+  attended_at: string | null
+  ready_at: string | null
+  received_at: string | null
+  receipt_signature_path: string | null
+  decision_signature_path: string | null
 }
 
 export type DocumentRow = {
@@ -71,6 +84,11 @@ export type DocumentRow = {
   revoked_at: string | null
   revoke_reason: string | null
   application_id: number | null
+  photo_path: string | null
+  holder_signature_path: string | null
+  issuer: string | null
+  division_code: string | null
+  issued_by: string | null
 }
 
 export type Fine = {
@@ -161,4 +179,37 @@ export type Debtor = {
   country_code: string | null
   total: number
   fines_count: number
+}
+
+export type Slot = {
+  id: number
+  country_code: string
+  starts_at: string
+  place: string
+  official_id: string | null
+  application_id: number | null
+  created_at: string
+}
+
+export type ExamQuestion = { id: number; question: string; options: string[] }
+
+export type ExamAttempt = {
+  id: number
+  user_id: string
+  question_ids: number[]
+  answers: number[] | null
+  score: number | null
+  passed: boolean | null
+  started_at: string
+  finished_at: string | null
+}
+
+/** Анкетные данные заявителя (хранятся в data заявления и документа). */
+export type Anketa = {
+  last_name?: string
+  first_name?: string
+  patronymic?: string
+  sex?: 'М' | 'Ж'
+  birth_date?: string
+  birth_place?: string
 }

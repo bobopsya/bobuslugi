@@ -1,18 +1,29 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { anon, balance, resetDb, rpc, signUp, sql, type User } from './helpers'
+import {
+  ANKETA,
+  anon,
+  approveAndReceive,
+  balance,
+  createSlot,
+  getCitizenship,
+  passExam,
+  resetDb,
+  rpc,
+  setSignature,
+  signUp,
+  sql,
+  submitDoc,
+  uploadPhoto,
+  uploadSignature,
+  type User,
+} from './helpers'
 
 let admin: User
 let alice: User // гражданка Бобокаунтри
 let bob: User // президент Бобокаунтри
 let olga: User // чиновница СШП
 let vasya: User // чиновник Бобокаунтри
-
-async function approveCitizenship(user: User, country: string, reviewer: User) {
-  const res = await rpc(user, 'submit_application', { p_service: 'citizenship', p_target: country, p_data: { city: 'Псяленд' } })
-  expect(res.ok).toBe(true)
-  const r = await rpc(reviewer, 'review_application', { p_id: res.id, p_decision: 'approve', p_comment: 'Сиф' })
-  expect(r.ok).toBe(true)
-}
+let friend: User // чиновник без подписи
 
 beforeAll(async () => {
   await resetDb()
@@ -46,8 +57,8 @@ describe('регистрация', () => {
     expect((await a.rpc('invite_required')).data).toBe(true)
     expect((await a.rpc('check_signup', { p_login: 'stranger', p_display_name: 'Чужой' })).data).toBe('E_INVITE')
     await expect(signUp('stranger', 'Чужой', 'wrong')).rejects.toThrow()
-    const ok = await signUp('friend', 'Друг', 'ga1234')
-    expect(ok.id).toBeTruthy()
+    friend = await signUp('friend', 'Друг', 'ga1234')
+    expect(friend.id).toBeTruthy()
     await rpc(admin, 'admin_set_setting', { p_key: 'invite_code', p_value: '' })
   })
 
@@ -62,6 +73,7 @@ describe('роли и гражданство', () => {
     await rpc(admin, 'admin_set_role', { p_user: bob.id, p_role: 'president', p_gov_country: 'BOBO' })
     await rpc(admin, 'admin_set_role', { p_user: olga.id, p_role: 'official', p_gov_country: 'SSHP' })
     await rpc(admin, 'admin_set_country', { p_user: bob.id, p_country: 'BOBO' })
+    for (const u of [admin, bob, olga]) await setSignature(u)
   })
 
   it('гражданин не может вызывать админские функции', async () => {
@@ -79,28 +91,97 @@ describe('роли и гражданство', () => {
     await expect(rpc(alice, 'submit_application', { p_service: 'intl_passport' })).rejects.toThrow('E_NOT_CITIZEN')
   })
 
-  it('заявление на гражданство видит и рассматривает только своя страна', async () => {
-    const res = await rpc(alice, 'submit_application', {
-      p_service: 'citizenship',
-      p_target: 'BOBO',
-      p_data: { city: 'Псяленд', reason: 'Хочу быть сляйнером' },
-    })
-    expect(res.ok).toBe(true)
+  it('гражданство: анкета, фото, экзамен, присяга, приём, изготовление, получение', async () => {
+    const photo = await uploadPhoto(alice)
+    const sig = await uploadSignature(alice)
+    const base = { p_service: 'citizenship', p_target: 'BOBO', p_photo_path: photo, p_signature_path: sig }
 
+    // Без анкеты, чужого фото и экзамена не принимают
+    await expect(rpc(alice, 'submit_application', { ...base, p_data: { first_name: 'Алиса' } })).rejects.toThrow('E_ANKETA')
+    const bobPhoto = await uploadPhoto(bob)
+    await expect(
+      rpc(alice, 'submit_application', { ...base, p_photo_path: bobPhoto, p_data: { ...ANKETA, oath: 'true' } }),
+    ).rejects.toThrow('E_NEED_PHOTO')
+    await expect(rpc(alice, 'submit_application', { ...base, p_data: { ...ANKETA, oath: 'true' } })).rejects.toThrow('E_NEED_EXAM')
+
+    // Экзамен: провал → пересдача только через час
+    await passExam(alice, 5)
+    const [failed] = await sql<{ passed: boolean; score: number }>(
+      'select passed, score from exam_attempts where user_id = $1',
+      [alice.id],
+    )
+    expect(failed).toEqual({ passed: false, score: 5 })
+    await expect(rpc(alice, 'start_exam')).rejects.toThrow('E_EXAM_COOLDOWN')
+    await sql(`update exam_attempts set finished_at = now() - interval '2 hours' where user_id = $1`, [alice.id])
+    const attempt = await passExam(alice)
+
+    // Без присяги и без записи на приём не принимают
+    const withExam = { ...base, p_exam_attempt: attempt }
+    await expect(rpc(alice, 'submit_application', { ...withExam, p_data: ANKETA })).rejects.toThrow('E_NEED_OATH')
+    await expect(rpc(alice, 'submit_application', { ...withExam, p_data: { ...ANKETA, oath: 'true' } })).rejects.toThrow(
+      'E_SLOT_UNAVAILABLE',
+    )
+
+    const slot = await createSlot(bob)
+    const res = await rpc(alice, 'submit_application', { ...withExam, p_slot_id: slot, p_data: { ...ANKETA, oath: 'true' } })
+    expect(res.ok).toBe(true)
+    const [app] = await sql<{ status: string; slot_id: number }>('select status, slot_id::int as slot_id from applications where id = $1', [res.id])
+    expect(app).toEqual({ status: 'appointment', slot_id: slot })
+
+    // Дата рождения 2010-05-24 содержит «52», но из календаря не штрафуется
+    expect(await sql(`select * from fines where user_id = $1`, [alice.id])).toHaveLength(0)
+
+    // Чужая страна не видит заявление и фото
     const { data: olgaSees } = await olga.client.from('applications').select('id').eq('id', res.id!)
     expect(olgaSees).toEqual([])
-    await expect(rpc(olga, 'review_application', { p_id: res.id, p_decision: 'approve' })).rejects.toThrow('E_FORBIDDEN_ACTION')
+    await expect(rpc(olga, 'mark_attendance', { p_app: res.id, p_attended: true })).rejects.toThrow('E_FORBIDDEN_ACTION')
+    expect((await olga.client.storage.from('photos').download(photo)).error).not.toBeNull()
+    expect((await vasya.client.storage.from('photos').download(photo)).error).not.toBeNull()
+    expect((await bob.client.storage.from('photos').download(photo)).error).toBeNull()
+    expect((await alice.client.storage.from('photos').download(photo)).error).toBeNull()
 
     const notif = await sql('select * from notifications where user_id = $1 and kind = $2', [bob.id, 'app_new'])
     expect(notif.length).toBe(1)
 
+    // До приёма одобрить нельзя; неявка освобождает слот, заявитель перезаписывается
+    await expect(rpc(bob, 'review_application', { p_id: res.id, p_decision: 'approve' })).rejects.toThrow('E_BAD_STATUS')
+    await rpc(bob, 'mark_attendance', { p_app: res.id, p_attended: false })
+    const [missed] = await sql<{ status: string; slot_id: number | null }>('select status, slot_id::int as slot_id from applications where id = $1', [res.id])
+    expect(missed).toEqual({ status: 'appointment', slot_id: null })
+    const slot2 = await createSlot(bob)
+    await rpc(alice, 'rebook_appointment', { p_app: res.id, p_slot: slot2 })
+    await rpc(bob, 'mark_attendance', { p_app: res.id, p_attended: true })
+
+    // Чиновник без подписи не может принять решение
+    await rpc(admin, 'admin_set_role', { p_user: friend.id, p_role: 'official', p_gov_country: 'BOBO' })
+    await expect(rpc(friend, 'review_application', { p_id: res.id, p_decision: 'approve' })).rejects.toThrow('E_NEED_SIGNATURE')
+
+    // Одобрение → изготовление → получение
     await rpc(bob, 'review_application', { p_id: res.id, p_decision: 'approve', p_comment: 'Кси, сляйнер!' })
+    const [producing] = await sql<{ status: string; ready: boolean }>(
+      'select status, ready_at > now() as ready from applications where id = $1',
+      [res.id],
+    )
+    expect(producing).toEqual({ status: 'producing', ready: true })
+    await expect(rpc(alice, 'receive_document', { p_app: res.id, p_signature_path: sig })).rejects.toThrow('E_NOT_READY')
+    await rpc(bob, 'speed_up_production', { p_app: res.id })
+    await rpc(alice, 'receive_document', { p_app: res.id, p_signature_path: sig })
+
     const [p] = await sql<{ country_code: string; city: string }>('select country_code, city from profiles where id = $1', [alice.id])
     expect(p).toMatchObject({ country_code: 'BOBO', city: 'Псяленд' })
-    const docs = await sql<{ type: string; number: string }>('select type, number from documents where user_id = $1', [alice.id])
+    const docs = await sql<{ type: string; number: string; photo_path: string; issuer: string; data: Record<string, string> }>(
+      'select type, number, photo_path, issuer, data from documents where user_id = $1',
+      [alice.id],
+    )
     expect(docs).toHaveLength(1)
-    expect(docs[0].type).toBe('passport')
+    expect(docs[0]).toMatchObject({ type: 'passport', photo_path: photo, issuer: 'ПсяМВД Бобокаунтри по г. Псяленд' })
+    expect(docs[0].data).toMatchObject({ last_name: 'Псянская', first_name: 'Алиса', sex: 'Ж', birth_date: '2010-05-24' })
     expect(docs[0].number).toMatch(/^((123|321|1234|4321) ){5}(123|321|1234|4321)$/)
+
+    // Проверка подлинности доступна гостю, но без персональных данных
+    const { data: check } = await anon().rpc('verify_document', { p_number: docs[0].number })
+    expect(check).toMatchObject({ found: true, type: 'passport', country_code: 'BOBO', valid: true })
+    expect(JSON.stringify(check)).not.toContain('Псянская')
   })
 
   it('повторно подать на гражданство нельзя', async () => {
@@ -110,8 +191,9 @@ describe('роли и гражданство', () => {
   })
 
   it('президент назначает чиновника', async () => {
-    await approveCitizenship(vasya, 'BOBO', bob)
+    await getCitizenship(vasya, 'BOBO', bob)
     await rpc(bob, 'president_set_official', { p_user: vasya.id, p_on: true })
+    await setSignature(vasya)
     const [p] = await sql<{ role: string; gov_country_code: string }>('select role, gov_country_code from profiles where id = $1', [vasya.id])
     expect(p).toMatchObject({ role: 'official', gov_country_code: 'BOBO' })
   })
@@ -130,7 +212,7 @@ describe('роли и гражданство', () => {
 
 describe('псякоины и пошлины', () => {
   it('без денег платная услуга не подаётся и заявление не создаётся', async () => {
-    await expect(rpc(alice, 'submit_application', { p_service: 'intl_passport' })).rejects.toThrow('E_NO_MONEY')
+    await expect(submitDoc(alice, 'intl_passport', null)).rejects.toThrow('E_NO_MONEY')
     const rows = await sql('select * from applications where user_id = $1 and service_code = $2', [alice.id, 'intl_passport'])
     expect(rows).toHaveLength(0)
   })
@@ -143,7 +225,7 @@ describe('псякоины и пошлины', () => {
   })
 
   it('пошлина списывается при подаче и возвращается при отказе', async () => {
-    const res = await rpc(alice, 'submit_application', { p_service: 'intl_passport' })
+    const res = await submitDoc(alice, 'intl_passport', null)
     expect(await balance(alice)).toBe(1234 - 123)
     await rpc(vasya, 'review_application', { p_id: res.id, p_decision: 'reject', p_comment: 'Фото не то' })
     expect(await balance(alice)).toBe(1234)
@@ -152,8 +234,8 @@ describe('псякоины и пошлины', () => {
   })
 
   it('отмена заявления возвращает пошлину', async () => {
-    const res = await rpc(alice, 'submit_application', { p_service: 'intl_passport' })
-    await expect(rpc(alice, 'submit_application', { p_service: 'intl_passport' })).rejects.toThrow('E_DUPLICATE')
+    const res = await submitDoc(alice, 'intl_passport', null)
+    await expect(submitDoc(alice, 'intl_passport', null)).rejects.toThrow('E_DUPLICATE')
     await rpc(alice, 'cancel_application', { p_id: res.id })
     expect(await balance(alice)).toBe(1234)
   })
@@ -166,14 +248,14 @@ describe('псякоины и пошлины', () => {
 describe('документы и переезд', () => {
   it('загранпаспорт → виза → Мигрантское окно', async () => {
     await rpc(admin, 'grant_coins', { p_user: alice.id, p_amount: 4321 })
-    const ip = await rpc(alice, 'submit_application', { p_service: 'intl_passport' })
-    await rpc(vasya, 'review_application', { p_id: ip.id, p_decision: 'approve' })
+    const ip = await submitDoc(alice, 'intl_passport', null)
+    await approveAndReceive(alice, ip.id!, vasya)
 
     await expect(rpc(alice, 'submit_application', { p_service: 'migrant_window', p_data: {} })).rejects.toThrow('E_NEED_VISA')
-    await expect(rpc(alice, 'submit_application', { p_service: 'visa', p_target: 'BOBO' })).rejects.toThrow('E_SAME_COUNTRY')
+    await expect(submitDoc(alice, 'visa', 'BOBO')).rejects.toThrow('E_SAME_COUNTRY')
 
-    const visa = await rpc(alice, 'submit_application', { p_service: 'visa', p_target: 'BOBOSTAN', p_data: { purpose: 'Посмотреть окно' } })
-    await rpc(admin, 'review_application', { p_id: visa.id, p_decision: 'approve' })
+    const visa = await submitDoc(alice, 'visa', 'BOBOSTAN', { purpose: 'Посмотреть окно' })
+    await approveAndReceive(alice, visa.id!, admin)
     const docs = await sql<{ type: string; country_code: string }>(
       'select type, country_code from documents where user_id = $1 and revoked_at is null order by id',
       [alice.id],
@@ -185,11 +267,11 @@ describe('документы и переезд', () => {
   })
 
   it('запрос уточнений и ответ заявителя', async () => {
-    const res = await rpc(alice, 'submit_application', { p_service: 'driver_license', p_data: { category: 'Гармод-джип' } })
+    const res = await submitDoc(alice, 'driver_license', null, { category: 'Гармод-джип' })
     await expect(rpc(vasya, 'review_application', { p_id: res.id, p_decision: 'needs_info' })).rejects.toThrow('E_COMMENT_REQUIRED')
     await rpc(vasya, 'review_application', { p_id: res.id, p_decision: 'needs_info', p_comment: 'Какой стаж?' })
     await rpc(alice, 'update_application', { p_id: res.id, p_data: { reply: '1234 часа в Гармоде' } })
-    await rpc(vasya, 'review_application', { p_id: res.id, p_decision: 'approve' })
+    await approveAndReceive(alice, res.id!, vasya)
     const [d] = await sql<{ data: { category: string } }>(
       `select data from documents where user_id = $1 and type = 'driver_license'`,
       [alice.id],
@@ -199,8 +281,19 @@ describe('документы и переезд', () => {
 
   it('смена гражданства аннулирует старые документы', async () => {
     await rpc(admin, 'grant_coins', { p_user: vasya.id, p_amount: 1234 })
-    const res = await rpc(vasya, 'submit_application', { p_service: 'change_citizenship', p_target: 'SSHP', p_data: { city: 'Псю-йорк' } })
-    await rpc(olga, 'review_application', { p_id: res.id, p_decision: 'approve' })
+    const attempt = await passExam(vasya)
+    const slot = await createSlot(olga)
+    const res = await rpc(vasya, 'submit_application', {
+      p_service: 'change_citizenship',
+      p_target: 'SSHP',
+      p_data: { ...ANKETA, city: 'Псю-йорк', oath: 'true' },
+      p_photo_path: await uploadPhoto(vasya),
+      p_signature_path: await uploadSignature(vasya),
+      p_slot_id: slot,
+      p_exam_attempt: attempt,
+    })
+    await rpc(olga, 'mark_attendance', { p_app: res.id, p_attended: true })
+    await approveAndReceive(vasya, res.id!, olga)
     const [p] = await sql<{ country_code: string; role: string; gov_country_code: string | null }>(
       'select country_code, role, gov_country_code from profiles where id = $1',
       [vasya.id],

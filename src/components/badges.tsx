@@ -2,7 +2,16 @@ import { useI18n } from '../lib/i18n'
 import type { AppStatus, ElectionStatus, FineStatus } from '../lib/types'
 import { Badge } from './ui'
 
-const appTone = { submitted: 'blue', needs_info: 'yellow', approved: 'green', rejected: 'red', cancelled: 'gray' } as const
+const appTone = {
+  submitted: 'blue',
+  needs_info: 'yellow',
+  approved: 'green',
+  rejected: 'red',
+  cancelled: 'gray',
+  appointment: 'yellow',
+  producing: 'blue',
+  issued: 'green',
+} as const
 
 export function AppStatusBadge({ status }: { status: AppStatus }) {
   const { t } = useI18n()

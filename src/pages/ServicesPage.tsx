@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ServiceTile } from '../components/ServiceTile'
-import { Alert, Button, ButtonLink, Card, ErrorBox, Field, Input, Loading, PageTitle, Select, Textarea } from '../components/ui'
+import { Alert, Button, ButtonLink, Card, ErrorBox, Field, Loading, PageTitle, Select } from '../components/ui'
 import { callRpc, useAction } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import { useCountries, useCountryName, useMyDocuments, useServices } from '../lib/queries'
-import { CATEGORY_ICONS, CATEGORY_ORDER, resolveTarget, serviceDef, type FieldDef } from '../lib/services'
+import { CATEGORY_ICONS, CATEGORY_ORDER, resolveTarget, serviceDef } from '../lib/services'
+import { FormField } from '../components/FormField'
+import { ServiceWizard } from '../components/wizard/ServiceWizard'
 import { NotFoundPage } from './MiscPages'
 
 export function ServicesPage() {
@@ -36,65 +38,6 @@ export function ServicesPage() {
       </div>
     </>
   )
-}
-
-function FormField({
-  field,
-  value,
-  onChange,
-  cities,
-}: {
-  field: FieldDef
-  value: string
-  onChange: (v: string) => void
-  cities: string[]
-}) {
-  const { t, raw, lang } = useI18n()
-  const { data: countries } = useCountries()
-  const label = t(`fields.${field.label ?? field.name}`)
-  const common = { name: field.name, value, required: field.required }
-
-  let control: React.ReactNode
-  if (field.kind === 'textarea') {
-    control = <Textarea {...common} maxLength={2000} onChange={(e) => onChange(e.target.value)} />
-  } else if (field.kind === 'select') {
-    const opts = raw<string[]>(`options.${field.optionsKey}`) ?? []
-    control = (
-      <Select {...common} onChange={(e) => onChange(e.target.value)}>
-        <option value="">—</option>
-        {opts.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </Select>
-    )
-  } else if (field.kind === 'country') {
-    control = (
-      <Select {...common} onChange={(e) => onChange(e.target.value)}>
-        <option value="">—</option>
-        {(countries ?? []).map((c) => (
-          <option key={c.code} value={lang === 'psy' ? c.psy_name : c.name}>
-            {lang === 'psy' ? c.psy_name : c.name}
-          </option>
-        ))}
-      </Select>
-    )
-  } else if (field.kind === 'city' && cities.length) {
-    control = (
-      <Select {...common} onChange={(e) => onChange(e.target.value)}>
-        <option value="">—</option>
-        {cities.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </Select>
-    )
-  } else {
-    control = <Input {...common} maxLength={200} onChange={(e) => onChange(e.target.value)} />
-  }
-  return <Field label={label}>{control}</Field>
 }
 
 export function ServicePage() {
@@ -132,7 +75,7 @@ export function ServicePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className={service.needs_photo ? 'mx-auto max-w-3xl' : 'mx-auto max-w-2xl'}>
       <Link to="/services" className="text-sm font-bold text-brand-700 hover:underline">
         ← {t('catalog.title')}
       </Link>
@@ -165,6 +108,12 @@ export function ServicePage() {
             <p className="mb-5 font-bold">{t('catalog.applied', { id: createdId })}</p>
             <ButtonLink to={`/cabinet/applications/${createdId}`}>{t('catalog.toApplication')}</ButtonLink>
           </div>
+        ) : service.needs_photo ? (
+          problem ? (
+            <Alert tone="yellow">{t(`errors.${problem}`)}</Alert>
+          ) : (
+            <ServiceWizard service={service} onCreated={setCreatedId} />
+          )
         ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             {(service.target_mode === 'any' || service.target_mode === 'foreign') && (

@@ -9,11 +9,13 @@ import type {
   Debtor,
   DocumentRow,
   Election,
+  ExamAttempt,
   Fine,
   News,
   Notification,
   Profile,
   ServiceRow,
+  Slot,
   Transaction,
   Wanted,
 } from './types'
@@ -103,7 +105,7 @@ export function useStaffApplications(onlyOpen: boolean) {
     enabled: Boolean(profile),
     queryFn: async () => {
       let q = supabase.from('applications').select('*').neq('user_id', profile!.id).order('created_at', { ascending: true })
-      if (onlyOpen) q = q.eq('status', 'submitted')
+      if (onlyOpen) q = q.in('status', ['submitted', 'appointment'])
       return unwrap(await q) as Application[]
     },
   })
@@ -206,5 +208,37 @@ export function useDebtors() {
     queryKey: ['debtors', profile?.id],
     enabled: Boolean(profile),
     queryFn: async () => unwrap(await supabase.rpc('debtors')) as Debtor[],
+  })
+}
+
+export function useSlot(id: number | null | undefined) {
+  return useQuery({
+    queryKey: ['slots', 'one', id],
+    enabled: Boolean(id),
+    queryFn: async () => unwrap(await supabase.from('appointment_slots').select('*').eq('id', id!).maybeSingle()) as Slot | null,
+  })
+}
+
+export function useExamAttempt(id: number | null | undefined) {
+  return useQuery({
+    queryKey: ['exam-attempt', id],
+    enabled: Boolean(id),
+    queryFn: async () => unwrap(await supabase.from('exam_attempts').select('*').eq('id', id!).maybeSingle()) as ExamAttempt | null,
+  })
+}
+
+export function useStaffSlots(country: string | null | undefined) {
+  return useQuery({
+    queryKey: ['slots', 'staff', country],
+    queryFn: async () => {
+      let q = supabase
+        .from('appointment_slots')
+        .select('*')
+        .gt('starts_at', new Date(Date.now() - 12 * 3600_000).toISOString())
+        .order('starts_at')
+        .limit(300)
+      if (country) q = q.eq('country_code', country)
+      return unwrap(await q) as Slot[]
+    },
   })
 }

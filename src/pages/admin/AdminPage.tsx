@@ -134,11 +134,14 @@ function Settings() {
   })
   const [invite, setInvite] = useState<string | null>(null)
   const [fine, setFine] = useState<string | null>(null)
+  const [minutes, setMinutes] = useState<string | null>(null)
+  const saveMinutes = useAction(() => callRpc('admin_set_setting', { p_key: 'passport_production_minutes', p_value: minutes ?? '' }))
   const saveInvite = useAction(() => callRpc('admin_set_setting', { p_key: 'invite_code', p_value: invite ?? '' }))
   const saveFine = useAction(() => callRpc('admin_set_setting', { p_key: 'forbidden_fine', p_value: fine ?? '' }))
   if (settings.isLoading) return <Loading />
   const inviteValue = invite ?? settings.data?.invite_code ?? ''
   const fineValue = fine ?? settings.data?.forbidden_fine ?? '123'
+  const minutesValue = minutes ?? settings.data?.passport_production_minutes ?? '30'
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -160,6 +163,15 @@ function Settings() {
           <ErrorBox error={saveFine.error} />
           <Button onClick={() => saveFine.run()} loading={saveFine.pending}>
             {saveFine.done ? '✓' : t('common.save')}
+          </Button>
+        </Card>
+        <Card className="space-y-3">
+          <Field label={t('admin.productionMinutes')} hint={t('admin.productionHint')}>
+            <Input type="number" min={0} value={minutesValue} onChange={(e) => setMinutes(e.target.value)} />
+          </Field>
+          <ErrorBox error={saveMinutes.error} />
+          <Button onClick={() => saveMinutes.run()} loading={saveMinutes.pending}>
+            {saveMinutes.done ? '✓' : t('common.save')}
           </Button>
         </Card>
       </div>

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ElectionStatusBadge } from '../components/badges'
+import { PdfButton } from '../components/PdfButton'
+import { pdf, usePdfCtx } from '../lib/pdf/usePdf'
 import { Alert, Button, Card, Empty, ErrorBox, Field, Input, Loading, PageTitle, Select, Textarea } from '../components/ui'
 import { callRpc, useAction } from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -101,6 +103,7 @@ export function ElectionPage() {
   const vote = useAction((candidate: number) => callRpc('vote', { p_election: electionId, p_candidate: candidate }))
   const setStatus = useAction((status: 'open' | 'closed') => callRpc('set_election_status', { p_id: electionId, p_status: status }))
   const remove = useAction((cid: number) => callRpc('remove_candidate', { p_id: cid }))
+  const ctx = usePdfCtx()
 
   if (isLoading) return <Loading />
   if (!data?.election) return <NotFoundPage />
@@ -127,6 +130,14 @@ export function ElectionPage() {
         <h1 className="text-2xl font-black">{election.title}</h1>
         {election.description && <p className="mt-2 whitespace-pre-wrap text-muted">{election.description}</p>}
         {turnout != null && election.status !== 'draft' && <p className="mt-2 text-sm font-bold">{t('elections.turnout', { count: num(turnout) })}</p>}
+        {election.status === 'closed' && results && (
+          <div className="mt-3">
+            <PdfButton
+              label={t('pdf.protocol')}
+              make={async () => (await pdf()).electionProtocolPdf(ctx, election, candidates, results, Number(turnout ?? 0))}
+            />
+          </div>
+        )}
       </Card>
 
       {profile && election.status === 'open' && profile.country_code !== election.country_code && (

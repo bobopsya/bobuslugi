@@ -54,25 +54,40 @@ export function fullName(d: Anketa | Record<string, string | undefined>) {
 function Stepper({ steps, current, onJump }: { steps: Step[]; current: number; onJump: (i: number) => void }) {
   const { t } = useI18n()
   return (
-    <ol className="mb-6 flex gap-1 overflow-x-auto">
-      {steps.map((s, i) => (
-        <li key={s} className="min-w-0 flex-1">
-          <button
-            type="button"
-            disabled={i > current}
-            onClick={() => onJump(i)}
-            className={cx(
-              'w-full whitespace-nowrap rounded-lg border-b-4 px-2 py-2 text-left text-xs font-bold',
-              i < current && 'border-emerald-500 text-emerald-700',
-              i === current && 'border-brand-600 text-brand-700',
-              i > current && 'border-slate-200 text-slate-400',
-            )}
-          >
-            {i + 1}. {t(`docflow.step.${s}`)}
-          </button>
-        </li>
-      ))}
-    </ol>
+    <div className="mb-6">
+      {/* Телефон: компактно «Шаг 2 из 6» и полоса прогресса */}
+      <div className="sm:hidden" data-testid="stepper-compact">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-sm font-black text-brand-700">{t(`docflow.step.${steps[current]}`)}</span>
+          <span className="text-xs font-bold text-muted">{t('docflow.stepOf', { n: current + 1, total: steps.length })}</span>
+        </div>
+        <div className="mt-2 flex gap-1">
+          {steps.map((s, i) => (
+            <span key={s} className={cx('h-1.5 flex-1 rounded-full', i < current ? 'bg-emerald-500' : i === current ? 'bg-brand-600' : 'bg-slate-200')} />
+          ))}
+        </div>
+      </div>
+      {/* Широкий экран: все шаги */}
+      <ol className="hidden gap-1 sm:flex">
+        {steps.map((s, i) => (
+          <li key={s} className="min-w-0 flex-1">
+            <button
+              type="button"
+              disabled={i > current}
+              onClick={() => onJump(i)}
+              className={cx(
+                'w-full truncate rounded-lg border-b-4 px-2 py-2 text-left text-xs font-bold',
+                i < current && 'border-emerald-500 text-emerald-700',
+                i === current && 'border-brand-600 text-brand-700',
+                i > current && 'border-slate-200 text-slate-400',
+              )}
+            >
+              {i + 1}. {t(`docflow.step.${s}`)}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
 

@@ -428,6 +428,7 @@ export const ru = {
   },
   docflow: {
     next: 'Далее',
+    stepOf: 'Шаг {n} из {total}',
     step: {
       anketa: 'Анкета',
       photo: 'Фото',

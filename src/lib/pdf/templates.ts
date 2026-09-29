@@ -3,7 +3,7 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
 import { orderedEntries } from '../services'
 import { fileAsDataUrl } from '../storage'
 import { mrz, seriesAndNumber } from '../translit'
-import type { Application, Candidate, DocumentRow, Election, Fine, News, Profile, Transaction } from '../types'
+import type { Application, Candidate, Country, DocumentRow, Election, Fine, Lawsuit, News, Profile, Transaction } from '../types'
 import { downloadPdf, header, kv, seal, signatureBlock, styles, verifyFooter } from './core'
 
 export type PdfCtx = {
@@ -65,6 +65,9 @@ export async function documentPdf(ctx: PdfCtx, doc: DocumentRow, holder: Profile
     ...(d.category ? [[ctx.t('fields.category'), d.category] as [string, string]] : []),
     ...(d.purpose ? [[ctx.t('fields.purpose'), d.purpose] as [string, string]] : []),
     ...(d.city ? [[ctx.t('fields.city'), d.city] as [string, string]] : []),
+    ...(['name', 'org_type', 'activity', 'kind', 'address', 'prop_type', 'area', 'brand', 'model', 'color'] as const)
+      .filter((k) => d[k])
+      .map((k) => [ctx.t(`fields.${k === 'kind' ? 'license_kind' : k}`), d[k]] as [string, string]),
   ])
 
   const [m1, m2] = mrz(doc)
@@ -378,4 +381,95 @@ export async function certificatePdf(
     { ...PAGE, info: { title: 'Справка' }, content },
     `Справка_${kind === 'citizenship' ? 'о_гражданстве' : 'о_задолженности'}_${profile.login}.pdf`,
   )
+}
+
+// ---------------------------------------------------------------------
+// Казна и суд
+// ---------------------------------------------------------------------
+
+export async function payrollPdf(ctx: PdfCtx, country: Country, staff: Profile[]) {
+  const total = staff.reduce((sum, p) => sum + p.salary, 0)
+  const content: Content[] = [
+    header(country.name, 'Казначейство'),
+    { text: 'ПЛАТЁЖНАЯ ВЕДОМОСТЬ', style: 'title' },
+    { text: `на выплату заработной платы госслужащим · ${ctx.date(new Date())}`, style: 'subtitle' },
+    {
+      table: {
+        headerRows: 1,
+        widths: [20, '*', 110, 90],
+        body: [
+          ['№', 'Госслужащий', 'Должность', 'Сумма'].map((h) => ({ text: h, style: 'label' })),
+          ...staff.map((p, i) => [String(i + 1), p.display_name, ctx.t(`roles.${p.role}`), ctx.coins(p.salary)]),
+          [{ text: 'Итого', colSpan: 3, bold: true }, '', '', { text: ctx.coins(total), bold: true }],
+        ],
+      },
+      layout: 'lightHorizontalLines',
+    },
+    signatureBlock({
+      role: 'Президент',
+      name: staff.find((p) => p.role === 'president')?.display_name ?? '—',
+      signature: await fileAsDataUrl('signatures', staff.find((p) => p.role === 'president')?.signature_path),
+      sealImage: seal(country.name, 'Казначейство'),
+      date: ctx.date(new Date()),
+    }),
+  ]
+  await downloadPdf({ ...PAGE, info: { title: 'Ведомость' }, content }, `Vedomost_${country.code}.pdf`)
+}
+
+export async function lawsuitPdf(ctx: PdfCtx, suit: Lawsuit) {
+  const plaintiff = ctx.profileOf(suit.plaintiff_id)
+  const defendant = ctx.profileOf(suit.defendant_id)
+  const content: Content[] = [
+    header(ctx.countryName(suit.country_code), 'Суд'),
+    { text: 'ИСКОВОЕ ЗАЯВЛЕНИЕ', style: 'title' },
+    { text: `Дело № ${suit.id}`, style: 'subtitle' },
+    kv([
+      ['Истец', plaintiff ? `${plaintiff.display_name} (@${plaintiff.login})` : '—'],
+      ['Ответчик', defendant ? `${defendant.display_name} (@${defendant.login})` : '—'],
+      ['Цена иска', ctx.coins(suit.amount)],
+      [ctx.t('cabinet.submittedAt'), ctx.date(suit.created_at, true)],
+    ]),
+    { margin: [0, 14, 0, 4], text: 'Суть требований', style: 'label' },
+    { text: suit.claim, lineHeight: 1.4 },
+    ...(suit.defense ? [{ margin: [0, 14, 0, 4], text: 'Возражения ответчика', style: 'label' } as Content, { text: suit.defense, lineHeight: 1.4 } as Content] : []),
+    signatureBlock({ role: 'Истец', name: plaintiff?.display_name ?? '—', signature: null, date: ctx.date(suit.created_at) }),
+  ]
+  await downloadPdf({ ...PAGE, info: { title: `Иск ${suit.id}` }, content }, `Isk_${suit.id}.pdf`)
+}
+
+export async function courtDecisionPdf(ctx: PdfCtx, suit: Lawsuit) {
+  const plaintiff = ctx.profileOf(suit.plaintiff_id)
+  const defendant = ctx.profileOf(suit.defendant_id)
+  const judge = ctx.profileOf(suit.judge_id)
+  const sig = await fileAsDataUrl('signatures', suit.judge_signature_path)
+  const country = ctx.countryName(suit.country_code)
+  const satisfied = (suit.awarded ?? 0) > 0
+  const content: Content[] = [
+    header(country, 'Суд'),
+    { text: `РЕШЕНИЕ СУДА № ${suit.id}`, style: 'title' },
+    { text: `Именем ${country}`, style: 'subtitle' },
+    {
+      text: [
+        'Рассмотрев иск ',
+        { text: plaintiff?.display_name ?? '—', bold: true },
+        ' к ',
+        { text: defendant?.display_name ?? '—', bold: true },
+        ` на сумму ${ctx.coins(suit.amount)}, суд постановил: `,
+        satisfied
+          ? { text: `ИСК УДОВЛЕТВОРИТЬ, взыскать ${ctx.coins(suit.awarded ?? 0)}.`, bold: true, color: '#047857' }
+          : { text: 'В УДОВЛЕТВОРЕНИИ ИСКА ОТКАЗАТЬ.', bold: true, color: '#be123c' },
+      ],
+      lineHeight: 1.4,
+    },
+    { margin: [0, 14, 0, 4], text: 'Мотивировка', style: 'label' },
+    { text: suit.verdict ?? '', lineHeight: 1.4 },
+    signatureBlock({
+      role: 'Судья',
+      name: judge?.display_name ?? '—',
+      signature: sig,
+      sealImage: seal(country, 'Суд'),
+      date: ctx.date(suit.decided_at),
+    }),
+  ]
+  await downloadPdf({ ...PAGE, info: { title: `Решение суда ${suit.id}` }, content }, `Reshenie_suda_${suit.id}.pdf`)
 }

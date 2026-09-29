@@ -17,7 +17,9 @@ export function DocumentCard({ doc, holder, action }: { doc: DocumentRow; holder
   const countryName = useCountryName()
   const expired = doc.valid_until && new Date(doc.valid_until) < new Date()
   const invalid = Boolean(doc.revoked_at) || Boolean(expired)
-  const extra = doc.data?.category ?? doc.data?.purpose ?? doc.data?.city
+  const d = doc.data ?? {}
+  const vehicle = d.brand ? [d.brand, d.model, d.color].filter(Boolean).join(' · ') : undefined
+  const extra = d.category ?? d.purpose ?? d.name ?? d.kind ?? d.address ?? vehicle ?? d.city
   const photo = useSignedUrl('photos', doc.photo_path)
   const name = [doc.data?.last_name, doc.data?.first_name, doc.data?.patronymic].filter(Boolean).join(' ') || holder?.display_name
 

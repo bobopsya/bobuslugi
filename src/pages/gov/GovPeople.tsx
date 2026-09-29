@@ -11,7 +11,8 @@ function CoinsForm({ person }: { person: Profile }) {
   const { t } = useI18n()
   const [amount, setAmount] = useState('')
   const [comment, setComment] = useState('')
-  const grant = useAction(() => callRpc('grant_coins', { p_user: person.id, p_amount: Number(amount), p_comment: comment }), () => {
+  const [source, setSource] = useState<'treasury' | 'mint'>('treasury')
+  const grant = useAction(() => callRpc('grant_coins', { p_user: person.id, p_amount: Number(amount), p_comment: comment, p_source: source }), () => {
     setAmount('')
     setComment('')
   })
@@ -32,6 +33,12 @@ function CoinsForm({ person }: { person: Profile }) {
           <Input name="coinsComment" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={200} />
         </Field>
       </div>
+      <Field label={t('economy.source')}>
+        <Select name="coinsSource" value={source} onChange={(e) => setSource(e.target.value as 'treasury' | 'mint')}>
+          <option value="treasury">{t('economy.fromTreasury')}</option>
+          <option value="mint">{t('economy.fromMint')}</option>
+        </Select>
+      </Field>
       <ErrorBox error={grant.error} />
       {grant.done && <Alert tone="green">{t('common.done')}</Alert>}
       <Button type="submit" loading={grant.pending}>

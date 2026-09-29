@@ -8,7 +8,9 @@ import { GovElections } from './GovElections'
 import { GovFines } from './GovFines'
 import { GovNews } from './GovNews'
 import { GovPeople } from './GovPeople'
+import { GovCourt } from './GovCourt'
 import { GovSlots } from './GovSlots'
+import { GovTreasury } from './GovTreasury'
 import { GovWanted } from './GovWanted'
 
 function Queue() {
@@ -32,7 +34,7 @@ export function GovPage() {
   const countryName = useCountryName()
   const [tab, setTab] = useState('queue')
   if (!profile) return null
-  const tabs = ['queue', 'slots', 'people', 'fines', 'news', 'elections', 'wanted'].map((v) => ({ value: v, label: t(`gov.${v}`) }))
+  const tabs = ['queue', 'slots', 'treasury', 'court', 'people', 'fines', 'news', 'elections', 'wanted'].map((v) => ({ value: v, label: t(`gov.${v}`) }))
 
   return (
     <>
@@ -42,6 +44,8 @@ export function GovPage() {
       <Tabs items={tabs} value={tab} onChange={setTab} />
       {tab === 'queue' && <Queue />}
       {tab === 'slots' && <GovSlots />}
+      {tab === 'treasury' && <GovTreasury />}
+      {tab === 'court' && <GovCourt />}
       {tab === 'people' && <GovPeople />}
       {tab === 'fines' && <GovFines />}
       {tab === 'news' && <GovNews />}

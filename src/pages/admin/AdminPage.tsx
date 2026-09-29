@@ -135,6 +135,8 @@ function Settings() {
   const [invite, setInvite] = useState<string | null>(null)
   const [fine, setFine] = useState<string | null>(null)
   const [minutes, setMinutes] = useState<string | null>(null)
+  const [courtFee, setCourtFee] = useState<string | null>(null)
+  const saveCourtFee = useAction(() => callRpc('admin_set_setting', { p_key: 'court_fee', p_value: courtFee ?? '' }))
   const saveMinutes = useAction(() => callRpc('admin_set_setting', { p_key: 'passport_production_minutes', p_value: minutes ?? '' }))
   const saveInvite = useAction(() => callRpc('admin_set_setting', { p_key: 'invite_code', p_value: invite ?? '' }))
   const saveFine = useAction(() => callRpc('admin_set_setting', { p_key: 'forbidden_fine', p_value: fine ?? '' }))
@@ -172,6 +174,15 @@ function Settings() {
           <ErrorBox error={saveMinutes.error} />
           <Button onClick={() => saveMinutes.run()} loading={saveMinutes.pending}>
             {saveMinutes.done ? '✓' : t('common.save')}
+          </Button>
+        </Card>
+        <Card className="space-y-3">
+          <Field label={t('admin.courtFee')}>
+            <Input type="number" min={0} value={courtFee ?? settings.data?.court_fee ?? '123'} onChange={(e) => setCourtFee(e.target.value)} />
+          </Field>
+          <ErrorBox error={saveCourtFee.error} />
+          <Button onClick={() => saveCourtFee.run()} loading={saveCourtFee.pending}>
+            {saveCourtFee.done ? '✓' : t('common.save')}
           </Button>
         </Card>
       </div>

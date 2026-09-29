@@ -9,8 +9,10 @@ import { DocumentsPage } from './pages/cabinet/DocumentsPage'
 import { FinesPage } from './pages/cabinet/FinesPage'
 import { NotificationsPage } from './pages/cabinet/NotificationsPage'
 import { SettingsPage } from './pages/cabinet/SettingsPage'
+import { PropertyPage } from './pages/cabinet/PropertyPage'
 import { WalletPage } from './pages/cabinet/WalletPage'
 import { CountriesPage, CountryPage } from './pages/CountriesPage'
+import { CourtCasePage, CourtPage } from './pages/CourtPage'
 import { ElectionPage, ElectionsPage } from './pages/ElectionsPage'
 import { GovApplicationPage } from './pages/gov/GovApplicationPage'
 import { GovPage } from './pages/gov/GovPage'
@@ -54,6 +56,9 @@ export function App() {
         <Route path="cabinet/wallet" element={auth(<WalletPage />)} />
         <Route path="cabinet/notifications" element={auth(<NotificationsPage />)} />
         <Route path="cabinet/settings" element={auth(<SettingsPage />)} />
+        <Route path="cabinet/property" element={auth(<PropertyPage />)} />
+        <Route path="court" element={auth(<CourtPage />)} />
+        <Route path="court/:id" element={auth(<CourtCasePage />)} />
 
         <Route path="gov" element={auth(<RequireRole><GovPage /></RequireRole>)} />
         <Route path="gov/applications/:id" element={auth(<RequireRole><GovApplicationPage /></RequireRole>)} />

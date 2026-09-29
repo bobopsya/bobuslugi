@@ -8,6 +8,7 @@ export function CabinetNav() {
     ['/cabinet', t('cabinet.profile')],
     ['/cabinet/documents', t('cabinet.documents')],
     ['/cabinet/applications', t('cabinet.applications')],
+    ['/cabinet/property', t('property.tab')],
     ['/cabinet/fines', t('cabinet.fines')],
     ['/cabinet/wallet', t('cabinet.wallet')],
     ['/cabinet/notifications', t('cabinet.notifications')],

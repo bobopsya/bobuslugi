@@ -87,6 +87,9 @@ export function PassportSpread({ doc }: { doc: DocumentRow }) {
               <Line label={t('fields.birth_date')} value={d.birth_date ? date(d.birth_date) : '—'} />
             </div>
             <Line label={t('fields.birth_place')} value={d.birth_place} />
+            {doc.type === 'passport' && profileOf(doc.user_id)?.registered_address && (
+              <Line label={t('property.registeredAt')} value={profileOf(doc.user_id)?.registered_address} />
+            )}
           </div>
         </div>
         <div className="mt-4 overflow-hidden rounded bg-white/70 px-2 py-1 font-mono text-[10px] leading-4 tracking-[0.12em] text-slate-800 sm:text-[11px]">

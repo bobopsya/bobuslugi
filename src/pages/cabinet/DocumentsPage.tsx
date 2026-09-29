@@ -40,7 +40,7 @@ export function DocumentsPage() {
           {others.length > 0 && (
             <div className="grid gap-4 md:grid-cols-2">
               {others.map((d) => (
-                <DocumentCard key={d.id} doc={d} holder={profile ?? undefined} action={<PdfButton make={download(d.id)} variant="ghost" />} />
+                <DocumentCard key={d.id} doc={d} holder={profile ?? undefined} action={<PdfButton make={download(d.id)} variant="secondary" />} />
               ))}
             </div>
           )}

@@ -22,11 +22,13 @@ export async function sql<T = Record<string, unknown>>(text: string, params: unk
 export async function resetDb() {
   await sql('truncate auth.users cascade')
   await sql(
-    `truncate public.news, public.elections, public.wanted, public.audit_log, public.appointment_slots restart identity cascade`,
+    `truncate public.news, public.elections, public.wanted, public.audit_log, public.appointment_slots,
+      public.treasury_tx, public.lawsuits, public.property_offers restart identity cascade`,
   )
   await sql(`update public.app_settings set value = '' where key = 'invite_code'`)
   await sql(`update public.app_settings set value = '123' where key = 'forbidden_fine'`)
   await sql(`update public.app_settings set value = '30' where key = 'passport_production_minutes'`)
+  await sql(`update public.countries set population_bonus = 0, treasury = 0, business_tax = 123, property_tax = 123`)
 }
 
 export function anon(): SupabaseClient {

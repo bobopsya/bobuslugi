@@ -6,17 +6,21 @@ import type {
   Application,
   Candidate,
   Country,
+  CountryStat,
   Debtor,
   DocumentRow,
   Election,
   ExamAttempt,
   Fine,
+  Lawsuit,
   News,
   Notification,
   Profile,
+  PropertyOffer,
   ServiceRow,
   Slot,
   Transaction,
+  TreasuryTx,
   Wanted,
 } from './types'
 
@@ -240,5 +244,47 @@ export function useStaffSlots(country: string | null | undefined) {
       if (country) q = q.eq('country_code', country)
       return unwrap(await q) as Slot[]
     },
+  })
+}
+
+export function useCountryStats() {
+  return useQuery({
+    queryKey: ['country-stats'],
+    queryFn: async () => unwrap(await supabase.rpc('country_stats')) as CountryStat[],
+  })
+}
+
+export function useTreasuryTx(country: string | null | undefined) {
+  return useQuery({
+    queryKey: ['treasury-tx', country],
+    enabled: Boolean(country),
+    queryFn: async () =>
+      unwrap(await supabase.from('treasury_tx').select('*').eq('country_code', country!).order('id', { ascending: false }).limit(200)) as TreasuryTx[],
+  })
+}
+
+export function usePropertyOffers() {
+  const { profile } = useAuth()
+  return useQuery({
+    queryKey: ['property-offers', profile?.id],
+    enabled: Boolean(profile),
+    queryFn: async () => unwrap(await supabase.from('property_offers').select('*').order('id', { ascending: false })) as PropertyOffer[],
+  })
+}
+
+/** Иски, которые видит пользователь: свои и (для госслужащих) иски своей страны. */
+export function useLawsuits() {
+  const { profile } = useAuth()
+  return useQuery({
+    queryKey: ['lawsuits', profile?.id],
+    enabled: Boolean(profile),
+    queryFn: async () => unwrap(await supabase.from('lawsuits').select('*').order('id', { ascending: false })) as Lawsuit[],
+  })
+}
+
+export function useLawsuit(id: number) {
+  return useQuery({
+    queryKey: ['lawsuits', 'one', id],
+    queryFn: async () => unwrap(await supabase.from('lawsuits').select('*').eq('id', id).maybeSingle()) as Lawsuit | null,
   })
 }

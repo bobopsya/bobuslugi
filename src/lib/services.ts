@@ -127,14 +127,51 @@ export const SERVICE_DEFS: ServiceDef[] = [
     ],
     check: citizen,
   },
+  {
+    code: 'business_registration',
+    icon: '🏪',
+    fields: [
+      { name: 'name', kind: 'text', required: true },
+      { name: 'org_type', kind: 'select', optionsKey: 'org_type', required: true },
+      { name: 'activity', kind: 'text', required: true },
+    ],
+    check: passport,
+  },
+  {
+    code: 'license',
+    icon: '📜',
+    fields: [{ name: 'kind', kind: 'select', optionsKey: 'license_kind', label: 'license_kind', required: true }],
+    check: passport,
+  },
+  {
+    code: 'property_registration',
+    icon: '🏠',
+    fields: [
+      { name: 'address', kind: 'text', required: true },
+      { name: 'prop_type', kind: 'select', optionsKey: 'prop_type', required: true },
+      { name: 'area', kind: 'text', required: true },
+    ],
+    check: passport,
+  },
+  {
+    code: 'vehicle_registration',
+    icon: '🚙',
+    fields: [
+      { name: 'brand', kind: 'text', required: true },
+      { name: 'model', kind: 'text', required: true },
+      { name: 'color', kind: 'text', required: true },
+    ],
+    check: passport,
+  },
 ]
 
-export const CATEGORY_ORDER = ['citizenship', 'documents', 'travel', 'appeals'] as const
+export const CATEGORY_ORDER = ['citizenship', 'documents', 'travel', 'business', 'appeals'] as const
 
 export const CATEGORY_ICONS: Record<string, string> = {
   citizenship: '🏛️',
   documents: '📄',
   travel: '🧭',
+  business: '🏢',
   appeals: '📣',
 }
 

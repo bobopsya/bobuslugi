@@ -1,9 +1,19 @@
 export type Role = 'citizen' | 'official' | 'president' | 'superadmin'
 export type AppStatus = 'submitted' | 'needs_info' | 'approved' | 'rejected' | 'cancelled' | 'appointment' | 'producing' | 'issued'
-export type DocType = 'passport' | 'intl_passport' | 'driver_license' | 'psyals' | 'residence_permit' | 'visa'
-export type FineKind = 'fine' | 'tax' | 'auto_forbidden'
+export type DocType =
+  | 'passport'
+  | 'intl_passport'
+  | 'driver_license'
+  | 'psyals'
+  | 'residence_permit'
+  | 'visa'
+  | 'business_reg'
+  | 'license'
+  | 'property'
+  | 'vehicle'
+export type FineKind = 'fine' | 'tax' | 'auto_forbidden' | 'court'
 export type FineStatus = 'unpaid' | 'paid' | 'cancelled'
-export type TxType = 'grant' | 'withdraw' | 'fee' | 'fine_payment' | 'refund'
+export type TxType = 'grant' | 'withdraw' | 'fee' | 'fine_payment' | 'refund' | 'salary' | 'court' | 'sale'
 export type NewsKind = 'news' | 'decree'
 export type ElectionStatus = 'draft' | 'open' | 'closed'
 export type TargetMode = 'any' | 'own' | 'foreign' | 'fixed'
@@ -19,6 +29,8 @@ export type Profile = {
   balance: number
   banned: boolean
   signature_path: string | null
+  salary: number
+  registered_address: string | null
   created_at: string
 }
 
@@ -33,6 +45,10 @@ export type Country = {
   in_union: boolean
   description: string
   sort: number
+  population_bonus: number
+  treasury: number
+  business_tax: number
+  property_tax: number
 }
 
 export type ServiceRow = {
@@ -45,7 +61,7 @@ export type ServiceRow = {
   sort: number
   needs_photo: boolean
   needs_exam: boolean
-  doc_type: DocType | null
+  doc_type: string | null
 }
 
 export type Application = {
@@ -100,6 +116,7 @@ export type Fine = {
   kind: FineKind
   status: FineStatus
   issued_by: string | null
+  beneficiary_id: string | null
   created_at: string
   paid_at: string | null
 }
@@ -212,4 +229,51 @@ export type Anketa = {
   sex?: 'М' | 'Ж'
   birth_date?: string
   birth_place?: string
+}
+
+export type CountryStat = { code: string; population: number; players: number; treasury: number; businesses: number }
+
+export type TreasuryTx = {
+  id: number
+  country_code: string
+  delta: number
+  balance_after: number
+  type: string
+  ref_type: string | null
+  ref_id: number | null
+  actor_id: string | null
+  comment: string | null
+  created_at: string
+}
+
+export type PropertyOffer = {
+  id: number
+  document_id: number
+  from_user: string
+  to_user: string
+  price: number
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+  created_at: string
+}
+
+export type LawsuitStatus = 'filed' | 'hearing' | 'decided' | 'dismissed'
+
+export type Lawsuit = {
+  id: number
+  plaintiff_id: string
+  defendant_id: string
+  country_code: string
+  amount: number
+  claim: string
+  defense: string | null
+  status: LawsuitStatus
+  hearing_at: string | null
+  place: string | null
+  judge_id: string | null
+  judge_signature_path: string | null
+  verdict: string | null
+  awarded: number | null
+  fine_id: number | null
+  created_at: string
+  decided_at: string | null
 }

@@ -12,7 +12,7 @@ drop policy if exists signatures_update_own on storage.objects;
 drop policy if exists signatures_delete_own on storage.objects;
 drop policy if exists signatures_read on storage.objects;
 
-drop table if exists public.appointment_slots, public.exam_attempts, public.exam_questions,
+drop table if exists public.lawsuits, public.property_offers, public.treasury_tx, public.appointment_slots, public.exam_attempts, public.exam_questions,
   public.audit_log, public.notifications, public.wanted, public.votes, public.candidates,
   public.elections, public.news, public.transactions, public.fines, public.documents, public.applications,
   public.services, public.app_settings, public.profiles, public.countries cascade;
@@ -26,6 +26,10 @@ drop function if exists public.is_superadmin, public.is_staff_of, public.is_pres
   public.admin_set_country, public.admin_set_setting, public.admin_update_service,
   public.can_view_photo, public.set_signature, public.start_exam, public.submit_exam, public.create_slots,
   public.delete_slot, public.rebook_appointment, public.mark_attendance, public.speed_up_production,
-  public.receive_document, public.verify_document cascade;
+  public.receive_document, public.verify_document,
+  public.country_stats, public.add_population, public.admin_treasury, public.set_salary, public.pay_salaries,
+  public.set_country_taxes, public.collect_taxes, public.set_registration, public.offer_property, public.respond_offer,
+  public.file_lawsuit, public.answer_lawsuit, public.schedule_hearing, public.decide_lawsuit, public.pardon,
+  public.amnesty cascade;
 drop type if exists public.user_role, public.app_status, public.doc_type, public.fine_kind, public.fine_status,
   public.tx_type, public.news_kind, public.election_status, public.target_mode cascade;

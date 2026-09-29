@@ -81,6 +81,7 @@ export function Layout() {
     { to: '/news', label: t('nav.news') },
     { to: '/elections', label: t('nav.elections') },
     { to: '/wanted', label: t('nav.wanted') },
+    ...(session ? [{ to: '/court', label: t('nav.court') }] : []),
     { to: '/countries', label: t('nav.countries') },
     { to: '/lore', label: t('nav.lore') },
   ]

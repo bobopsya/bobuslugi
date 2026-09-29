@@ -24,7 +24,7 @@ test('на телефоне мастер и страницы не вылезаю
   await page.fill('textarea[name=reason]', 'Хочу')
   await page.getByRole('button', { name: 'Далее' }).click()
   await page.getByTestId('photo-input').setInputFiles('tests/fixtures/face.svg'); await page.waitForTimeout(500)
-  for (const url of ['/#/cabinet/documents', '/#/gov', '/#/cabinet/settings']) {
+  for (const url of ['/#/cabinet/documents', '/#/gov', '/#/cabinet/settings', '/#/court', '/#/cabinet/property', '/#/countries']) {
     await page.goto(url); await page.waitForTimeout(500)
     const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(o, url).toBeLessThanOrEqual(0)

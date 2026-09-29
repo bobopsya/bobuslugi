@@ -218,5 +218,8 @@ export const psy: DeepPartial<Dict> = {
     takePhoto: 'Сфоткапся',
   },
   pdf: { download: 'Скачапся PDF' },
+  economy: { population: 'Псянаселение', treasury: 'Бобоказна', paySalaries: 'Га раздать зарплаты', mint: 'Псяпечатный станок' },
+  court: { title: 'Бобосуд', file: 'Га в суд' },
+  property: { title: 'Смука имущества', buy: 'Га купить' },
   notFound: { title: 'Страница ушла в Мигрантское окно', text: 'Такой страницы на Асее нет, паса.', home: 'Га на главпся' },
 }

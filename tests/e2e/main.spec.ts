@@ -106,7 +106,7 @@ test('гражданство по-настоящему: анкета, фото, 
   await expect(alice.getByText('Документ готов к выдаче!')).toBeVisible()
   await sign(alice)
   await alice.getByRole('button', { name: 'Получить документ' }).click()
-  await expect(alice.getByText('Документ получен и действует.')).toBeVisible()
+  await expect(alice.getByText(/Документ выдан/)).toBeVisible()
 
   // Разворот паспорта с фото и PDF
   await alice.goto('/#/cabinet/documents')

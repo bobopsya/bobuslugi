@@ -108,7 +108,10 @@ export function useStaffApplications(onlyOpen: boolean) {
     queryKey: ['applications', 'staff', profile?.id, onlyOpen],
     enabled: Boolean(profile),
     queryFn: async () => {
-      let q = supabase.from('applications').select('*').neq('user_id', profile!.id).order('created_at', { ascending: true })
+      // Officials and presidents never review their own applications; the superadmin may (the database allows it),
+      // otherwise a lone admin could not get a passport at all.
+      let q = supabase.from('applications').select('*').order('created_at', { ascending: true })
+      if (profile!.role !== 'superadmin') q = q.neq('user_id', profile!.id)
       if (onlyOpen) q = q.in('status', ['submitted', 'appointment'])
       return unwrap(await q) as Application[]
     },

@@ -6,6 +6,9 @@ export const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
 export const ANON_KEY =
   process.env.SUPABASE_ANON_KEY ??
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+export const SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_KEY ??
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
 export const DB_URL = process.env.SUPABASE_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 
 export async function sql<T = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<T[]> {
@@ -23,16 +26,30 @@ export async function resetDb() {
   await sql('truncate auth.users cascade')
   await sql(
     `truncate public.news, public.elections, public.wanted, public.audit_log, public.appointment_slots,
-      public.treasury_tx, public.lawsuits, public.property_offers restart identity cascade`,
+      public.treasury_tx, public.lawsuits, public.property_offers, public.bank_orders, public.coin_exchanges,
+      public.gpay_shops, public.link_codes, public.bank_links restart identity cascade`,
   )
+  await sql(`update public.app_settings set value = '10000' where key = 'psy_rub_rate'`)
   await sql(`update public.app_settings set value = '' where key = 'invite_code'`)
   await sql(`update public.app_settings set value = '123' where key = 'forbidden_fine'`)
   await sql(`update public.app_settings set value = '30' where key = 'passport_production_minutes'`)
-  await sql(`update public.countries set population_bonus = 0, treasury = 0, business_tax = 123, property_tax = 123`)
+  await sql(`update public.countries set population_bonus = 0, treasury = 0, business_tax = 123, property_tax = 123, turnover_tax = 1`)
 }
 
 export function anon(): SupabaseClient {
   return createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+}
+
+/** Клиент с ключом service_role — так в базу ходят сервер банка и GPAY. */
+export function service(): SupabaseClient {
+  return createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+}
+
+/** Вызов svc_* от имени банка. */
+export async function svc<T = Record<string, unknown>>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
+  const { data, error } = await service().rpc(fn, args)
+  if (error) throw new Error(error.message)
+  return data as T
 }
 
 export type User = { client: SupabaseClient; id: string; login: string }

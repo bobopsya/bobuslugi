@@ -50,14 +50,16 @@ export function errorText(err: unknown, t: (k: string, p?: Record<string, string
 export function useAction<A = void, R = unknown>(fn: (args: A) => Promise<R>, onSuccess?: (result: R, args: A) => void) {
   const qc = useQueryClient()
   const [done, setDone] = useState(false)
+  const [result, setResult] = useState<R | undefined>(undefined)
   const m = useMutation({
     mutationFn: fn,
     onMutate: () => setDone(false),
     onSuccess: (r, a) => {
+      setResult(r)
       setDone(true)
       onSuccess?.(r, a)
     },
     onSettled: () => qc.invalidateQueries(),
   })
-  return { run: m.mutate, runAsync: m.mutateAsync, pending: m.isPending, error: m.error, done, reset: () => { m.reset(); setDone(false) } }
+  return { run: m.mutate, runAsync: m.mutateAsync, pending: m.isPending, error: m.error, done, result, reset: () => { m.reset(); setDone(false) } }
 }

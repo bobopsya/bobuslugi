@@ -182,7 +182,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const { session, profile, loading } = useAuth()
   const location = useLocation()
   if (loading) return <Loading />
-  if (!session) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />
+  if (!session) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
   if (!profile) return <Loading />
   return <>{children}</>
 }

@@ -165,7 +165,7 @@ create function private.person(p_user uuid) returns jsonb
 language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'id', p.id, 'login', p.login, 'display_name', p.display_name, 'role', p.role,
-    'country_code', p.country_code, 'gov_country_code', p.gov_country_code, 'banned', p.banned,
+    'country_code', p.country_code, 'gov_country_code', p.gov_country_code, 'banned', p.banned, 'balance', p.balance,
     'passport', (
       select jsonb_build_object(
         'number', d.number, 'country_code', d.country_code, 'issued_at', d.issued_at, 'issuer', d.issuer,

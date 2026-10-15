@@ -41,6 +41,8 @@ jobs:
   build:
     name: Сборка
     needs: migrate
+    # Если сайт переехал на свой сервер (deploy/install-bobuslugi.sh в pupareportsystem), задайте переменную PAGES=off.
+    if: vars.PAGES != 'off'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +57,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_EMAIL_DOMAIN: ${{ vars.VITE_EMAIL_DOMAIN }}
+          VITE_BANK_URL: ${{ vars.VITE_BANK_URL }}
+          VITE_GPAY_URL: ${{ vars.VITE_GPAY_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { bankEnabled } from '../lib/bank'
 import { useI18n } from '../lib/i18n'
 import { cx } from './ui'
 
@@ -11,6 +12,7 @@ export function CabinetNav() {
     ['/cabinet/property', t('property.tab')],
     ['/cabinet/fines', t('cabinet.fines')],
     ['/cabinet/wallet', t('cabinet.wallet')],
+    ...(bankEnabled ? ([['/cabinet/bank', t('cabinet.bank')]] as const) : []),
     ['/cabinet/notifications', t('cabinet.notifications')],
     ['/cabinet/settings', t('cabinet.settings')],
   ] as const

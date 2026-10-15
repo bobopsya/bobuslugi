@@ -48,6 +48,7 @@ export type Country = {
   population_bonus: number
   treasury: number
   business_tax: number
+  turnover_tax?: number
   property_tax: number
 }
 
@@ -119,6 +120,7 @@ export type Fine = {
   beneficiary_id: string | null
   created_at: string
   paid_at: string | null
+  paid_via?: 'coins' | 'bank' | null
 }
 
 export type Transaction = {

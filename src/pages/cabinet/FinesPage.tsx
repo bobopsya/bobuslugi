@@ -7,6 +7,9 @@ import { Button, Empty, ErrorBox, Loading, PageTitle } from '../../components/ui
 import { callRpc, useAction } from '../../lib/api'
 import { useI18n } from '../../lib/i18n'
 import { useCountryName, useMyFines } from '../../lib/queries'
+import { useQuery } from '@tanstack/react-query'
+import { BANK_URL, bankEnabled, rub } from '../../lib/bank'
+import { supabase } from '../../lib/supabase'
 
 export function FinesPage() {
   const { t, coins, date, lang } = useI18n()
@@ -15,6 +18,8 @@ export function FinesPage() {
   const [payingId, setPayingId] = useState<number | null>(null)
   const pay = useAction((id: number) => callRpc('pay_fine', { p_id: id }))
   const ctx = usePdfCtx()
+  const rate = useQuery({ queryKey: ['psy-rate'], queryFn: async () => Number((await supabase.rpc('psy_rate')).data ?? 10000), enabled: bankEnabled, staleTime: 60_000 }).data
+  const backHere = `${window.location.origin}${window.location.pathname}#/cabinet/fines`
 
   return (
     <>
@@ -37,6 +42,7 @@ export function FinesPage() {
                 </div>
                 <div className="text-xs text-muted">
                   {f.country_code ? countryName(f.country_code, lang === 'psy') : t('common.planet')} · {date(f.created_at)}
+                  {f.paid_via === 'bank' && ` · ${t('cabinet.paidViaBank')}`}
                 </div>
               </div>
               <PdfButton variant="ghost" label={t('pdf.fine')} make={async () => (await pdf()).finePdf(ctx, f)} />
@@ -50,6 +56,14 @@ export function FinesPage() {
                 >
                   {t('cabinet.pay')}
                 </Button>
+              )}
+              {f.status === 'unpaid' && bankEnabled && rate && (
+                <a
+                  className="inline-flex items-center justify-center rounded-lg bg-[#21A038] px-4 py-2.5 text-sm font-bold text-white hover:brightness-95"
+                  href={`${BANK_URL}/gos/pay?fine=${f.id}&return=${encodeURIComponent(backHere)}`}
+                >
+                  {t('cabinet.payBank', { rub: rub(f.amount * rate) })}
+                </a>
               )}
             </div>
           ))}

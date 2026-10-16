@@ -473,3 +473,67 @@ export async function courtDecisionPdf(ctx: PdfCtx, suit: Lawsuit) {
   ]
   await downloadPdf({ ...PAGE, info: { title: `Решение суда ${suit.id}` }, content }, `Reshenie_suda_${suit.id}.pdf`)
 }
+
+// ---------------------------------------------------------------------
+// Bobobank: выписка и справка о доходах
+// ---------------------------------------------------------------------
+
+const rubText = (minor: number, cur = 'RUB') =>
+  `${(minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur === 'RUB' ? '₽' : cur}`
+
+export async function bankStatementPdf(ctx: PdfCtx, profile: Profile, st: import('../bank').BankStatement) {
+  const cur = st.account.currency
+  const content: Content[] = [
+    header('АО «Бобобанк»', 'Выписка получена через Бобуслуги'),
+    { text: 'ВЫПИСКА ПО СЧЁТУ', style: 'title' },
+    { text: `${st.holder} · ${st.account.name} · № ${st.account.number}`, style: 'subtitle' },
+    kv([
+      ['Период', `${ctx.date(new Date(st.from))} — ${ctx.date(new Date(st.to - 1))}`],
+      ['Входящий остаток', rubText(st.opening, cur)],
+      ['Поступления', rubText(st.income, cur)],
+      ['Списания', rubText(st.spent, cur)],
+      ['Исходящий остаток', rubText(st.closing, cur)],
+      ['Запросил', `${profile.display_name} (@${profile.login})`],
+    ]),
+    {
+      table: {
+        headerRows: 1,
+        widths: [90, '*', 90],
+        body: [
+          ['Дата', 'Операция', 'Сумма'].map((h) => ({ text: h, style: 'label' })),
+          ...st.entries.map((e) => [
+            ctx.date(new Date(e.date), true),
+            `${e.title}${e.subtitle ? ` · ${e.subtitle}` : ''}`,
+            { text: `${e.amount > 0 ? '+' : ''}${rubText(e.amount, cur)}`, color: e.amount > 0 ? '#047857' : '#be123c' },
+          ]),
+        ],
+      },
+      layout: 'lightHorizontalLines',
+    },
+    signatureBlock({ role: 'АО «Бобобанк»', name: 'Сформировано автоматически', signature: null, sealImage: seal('Бобобанк', 'Операционный отдел'), date: ctx.date(new Date()) }),
+  ]
+  await downloadPdf({ ...PAGE, info: { title: 'Выписка Bobobank' }, content }, `Выписка_Bobobank_${slug(st.account.number)}.pdf`)
+}
+
+export async function incomeCertificatePdf(ctx: PdfCtx, profile: Profile, inc: import('../bank').BankIncome) {
+  const content: Content[] = [
+    header('АО «Бобобанк»', 'Справка получена через Бобуслуги'),
+    { text: 'СПРАВКА О ДОХОДАХ', style: 'title' },
+    { text: `Выдана ${inc.holder} (Бобуслуги: @${profile.login}) о поступлениях на счета в Бобобанке`, style: 'subtitle' },
+    {
+      table: {
+        headerRows: 1,
+        widths: ['*', 120],
+        body: [
+          ['Месяц', 'Поступления'].map((h) => ({ text: h, style: 'label' })),
+          ...inc.months.map((m) => [m.month, rubText(m.amount)]),
+          [{ text: 'Итого', bold: true }, { text: rubText(inc.total), bold: true }],
+        ],
+      },
+      layout: 'lightHorizontalLines',
+    },
+    { text: 'Учтены поступления от других людей и организаций: зарплата, переводы, возвраты, проценты. Переводы между своими счетами не учитываются.', margin: [0, 12, 0, 0], color: '#64748b' },
+    signatureBlock({ role: 'АО «Бобобанк»', name: 'Сформировано автоматически', signature: null, sealImage: seal('Бобобанк', 'Операционный отдел'), date: ctx.date(new Date()) }),
+  ]
+  await downloadPdf({ ...PAGE, info: { title: 'Справка о доходах' }, content }, `Справка_о_доходах_${profile.login}.pdf`)
+}

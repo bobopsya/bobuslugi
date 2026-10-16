@@ -57,6 +57,7 @@ export function DocumentCard({ doc, holder, action }: { doc: DocumentRow; holder
             {doc.number}
           </div>
           {extra && <div className="mt-1 text-sm text-white/80">{extra}</div>}
+          {d.inn && <div className="mt-1 font-mono text-sm text-white/90">ИНН {d.inn}</div>}
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-white/80">

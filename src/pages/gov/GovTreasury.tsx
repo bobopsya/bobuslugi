@@ -1,4 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { bankApi, bankEnabled, rub } from '../../lib/bank'
 import { CountrySelect } from '../../components/CountrySelect'
 import { PdfButton } from '../../components/PdfButton'
 import { Alert, Button, Card, cx, Empty, ErrorBox, Field, Input, Loading, SectionTitle } from '../../components/ui'
@@ -62,14 +64,23 @@ export function GovTreasury() {
   const [topUp, setTopUp] = useState('')
   const [bizTax, setBizTax] = useState<string | null>(null)
   const [propTax, setPropTax] = useState<string | null>(null)
+  const [turnTax, setTurnTax] = useState<string | null>(null)
+  const [source, setSource] = useState<'coins' | 'bank'>('coins')
+  const bank = useQuery({
+    queryKey: ['bank-treasury', country],
+    queryFn: () => bankApi<{ number: string; balance: number; entries: { date: number; title: string; subtitle: string; amount: number }[] }>(`/treasury/${country}`),
+    enabled: bankEnabled && Boolean(country),
+    retry: false,
+  })
   const addPop = useAction((amount: number) => callRpc('add_population', { p_country: country, p_amount: amount }), () => setCustomPop(''))
-  const pay = useAction(() => callRpc<{ ok: true; count: number; total: number }>('pay_salaries', { p_country: country }))
+  const pay = useAction(() => callRpc<{ ok: true; count: number; total: number; skipped: number; source: string }>('pay_salaries', { p_country: country, p_source: source }))
   const collect = useAction(() => callRpc<{ ok: true; count: number }>('collect_taxes', { p_country: country }))
   const saveTaxes = useAction(() =>
     callRpc('set_country_taxes', {
       p_country: country,
       p_business_tax: Number(bizTax ?? c?.business_tax ?? 0),
       p_property_tax: Number(propTax ?? c?.property_tax ?? 0),
+      p_turnover_tax: Number(turnTax ?? c?.turnover_tax ?? 0),
     }),
   )
   const mint = useAction(() => callRpc('admin_treasury', { p_country: country, p_amount: Number(topUp) }), () => setTopUp(''))
@@ -130,6 +141,32 @@ export function GovTreasury() {
           )}
           <ErrorBox error={mint.error} />
         </Card>
+        {bankEnabled && (
+          <Card className="md:col-span-2">
+            <div className="text-xs font-bold uppercase tracking-wide text-muted">{t('economy.bankTreasury')}</div>
+            {bank.error ? (
+              <ErrorBox error={bank.error} />
+            ) : bank.data ? (
+              <>
+                <div className="mt-1 text-4xl font-black text-emerald-600" data-testid="bank-treasury">{rub(bank.data.balance)}</div>
+                <div className="font-mono text-xs text-muted">{bank.data.number}</div>
+                <div className="mt-1 text-sm text-muted">{t('economy.bankTreasuryHint')}</div>
+                {bank.data.entries.length > 0 && (
+                  <div className="mt-3 divide-y divide-slate-100 text-sm">
+                    {bank.data.entries.slice(0, 5).map((e, i) => (
+                      <div key={i} className="flex gap-3 py-1.5">
+                        <span className="min-w-0 flex-1 truncate">{e.title} · <span className="text-muted">{e.subtitle}</span></span>
+                        <span className={cx('font-bold', e.amount > 0 ? 'text-emerald-600' : 'text-accent-500')}>{e.amount > 0 ? '+' : ''}{rub(e.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <Loading />
+            )}
+          </Card>
+        )}
       </div>
 
       <Card>
@@ -146,8 +183,18 @@ export function GovTreasury() {
         {canManage && (
           <div className="mt-4 space-y-2">
             <p className="text-sm text-muted">{t('economy.payrollTotal', { amount: coins(payrollTotal) })}</p>
+            {bankEnabled && (
+              <div className="max-w-xs">
+                <Field label={t('economy.salariesFrom')}>
+                  <select className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5" value={source} onChange={(e) => setSource(e.target.value as 'coins' | 'bank')}>
+                    <option value="coins">{t('economy.salariesCoins')}</option>
+                    <option value="bank">{t('economy.salariesBank')}</option>
+                  </select>
+                </Field>
+              </div>
+            )}
             <ErrorBox error={pay.error} />
-            {pay.done && <Alert tone="green">{t('economy.paid')}</Alert>}
+            {pay.done && <Alert tone="green">{source === 'bank' ? t('economy.paidBank', { count: num(pay.result?.count ?? 0), skipped: num(pay.result?.skipped ?? 0) }) : t('economy.paid')}</Alert>}
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => confirm(t('common.confirm')) && pay.run()} loading={pay.pending} disabled={!payrollTotal}>
                 💸 {t('economy.paySalaries')}
@@ -170,6 +217,11 @@ export function GovTreasury() {
             <Field label={t('economy.propertyTax')}>
               <Input type="number" min={0} value={propTax ?? String(c.property_tax)} onChange={(e) => setPropTax(e.target.value)} />
             </Field>
+            {bankEnabled && (
+              <Field label={t('economy.turnoverTax')}>
+                <Input type="number" min={0} max={50} step="0.5" value={turnTax ?? String(c.turnover_tax ?? 1)} onChange={(e) => setTurnTax(e.target.value)} />
+              </Field>
+            )}
           </div>
           <ErrorBox error={saveTaxes.error ?? collect.error} />
           {collect.done && <Alert tone="green">{t('economy.collected')}</Alert>}

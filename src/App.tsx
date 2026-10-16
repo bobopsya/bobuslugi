@@ -24,6 +24,8 @@ import { NotFoundPage, SetupPage } from './pages/MiscPages'
 import { ServicePage, ServicesPage } from './pages/ServicesPage'
 import { VerifyPage } from './pages/VerifyPage'
 import { WantedPage } from './pages/WantedPage'
+import { ConnectPage } from './pages/ConnectPage'
+import { BankPage } from './pages/cabinet/BankPage'
 
 const auth = (el: React.ReactNode) => <RequireAuth>{el}</RequireAuth>
 
@@ -57,6 +59,8 @@ export function App() {
         <Route path="cabinet/notifications" element={auth(<NotificationsPage />)} />
         <Route path="cabinet/settings" element={auth(<SettingsPage />)} />
         <Route path="cabinet/property" element={auth(<PropertyPage />)} />
+        <Route path="cabinet/bank" element={auth(<BankPage />)} />
+        <Route path="connect" element={auth(<ConnectPage />)} />
         <Route path="court" element={auth(<CourtPage />)} />
         <Route path="court/:id" element={auth(<CourtCasePage />)} />
 

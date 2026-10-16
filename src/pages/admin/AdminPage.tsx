@@ -4,6 +4,7 @@ import { CountrySelect } from '../../components/CountrySelect'
 import { Alert, Badge, Button, Card, ErrorBox, Field, Input, Loading, PageTitle, Select, Tabs } from '../../components/ui'
 import { callRpc, unwrap, useAction } from '../../lib/api'
 import { useAuth } from '../../lib/auth'
+import { bankEnabled } from '../../lib/bank'
 import { useI18n } from '../../lib/i18n'
 import { useProfileMap, useProfiles, useServices } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
@@ -136,6 +137,8 @@ function Settings() {
   const [fine, setFine] = useState<string | null>(null)
   const [minutes, setMinutes] = useState<string | null>(null)
   const [courtFee, setCourtFee] = useState<string | null>(null)
+  const [rate, setRate] = useState<string | null>(null)
+  const saveRate = useAction(() => callRpc('admin_set_setting', { p_key: 'psy_rub_rate', p_value: String(Math.round(Number(rate ?? '0') * 100)) }))
   const saveCourtFee = useAction(() => callRpc('admin_set_setting', { p_key: 'court_fee', p_value: courtFee ?? '' }))
   const saveMinutes = useAction(() => callRpc('admin_set_setting', { p_key: 'passport_production_minutes', p_value: minutes ?? '' }))
   const saveInvite = useAction(() => callRpc('admin_set_setting', { p_key: 'invite_code', p_value: invite ?? '' }))
@@ -185,6 +188,17 @@ function Settings() {
             {saveCourtFee.done ? '✓' : t('common.save')}
           </Button>
         </Card>
+        {bankEnabled && (
+          <Card className="space-y-3">
+            <Field label="Курс псякоина в Bobobank, ₽ за 1 ПСЯ" hint="По нему считаются штрафы в рублях, обмен в банке и налог с оборота">
+              <Input type="number" min={0.01} step="0.01" value={rate ?? String(Number(settings.data?.psy_rub_rate ?? '10000') / 100)} onChange={(e) => setRate(e.target.value)} />
+            </Field>
+            <ErrorBox error={saveRate.error} />
+            <Button onClick={() => saveRate.run()} loading={saveRate.pending} disabled={!rate || Number(rate) <= 0}>
+              {saveRate.done ? '✓' : t('common.save')}
+            </Button>
+          </Card>
+        )}
       </div>
       <Card>
         <h2 className="mb-2 font-black">{t('admin.services')}</h2>

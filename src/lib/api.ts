@@ -13,7 +13,10 @@ export class ApiError extends Error {
 
 function codeFrom(message: string): string {
   const m = message.match(/\bE_[A-Z_]+\b/)
-  return m ? m[0] : 'UNKNOWN'
+  if (m) return m[0]
+  // The site is newer than the database: a migration from supabase/migrations was not applied.
+  if (/could not find the function|function .* does not exist|schema cache/i.test(message)) return 'E_DB_OUTDATED'
+  return 'UNKNOWN'
 }
 
 /** Вызов функции базы. Ответ `{ ok: false, error }` тоже превращается в ошибку. */
@@ -36,7 +39,7 @@ export function unwrap<T>(res: { data: T | null; error: { message: string } | nu
 export function errorText(err: unknown, t: (k: string, p?: Record<string, string | number>) => string): string {
   if (err instanceof ApiError) {
     const key = `errors.${err.code}`
-    const text = t(key)
+    const text = t(key, { message: err.message })
     return text === key ? t('errors.UNKNOWN', { message: err.message }) : text
   }
   if (err instanceof Error) return t('errors.UNKNOWN', { message: err.message })
@@ -50,14 +53,16 @@ export function errorText(err: unknown, t: (k: string, p?: Record<string, string
 export function useAction<A = void, R = unknown>(fn: (args: A) => Promise<R>, onSuccess?: (result: R, args: A) => void) {
   const qc = useQueryClient()
   const [done, setDone] = useState(false)
+  const [result, setResult] = useState<R | undefined>(undefined)
   const m = useMutation({
     mutationFn: fn,
     onMutate: () => setDone(false),
     onSuccess: (r, a) => {
+      setResult(r)
       setDone(true)
       onSuccess?.(r, a)
     },
     onSettled: () => qc.invalidateQueries(),
   })
-  return { run: m.mutate, runAsync: m.mutateAsync, pending: m.isPending, error: m.error, done, reset: () => { m.reset(); setDone(false) } }
+  return { run: m.mutate, runAsync: m.mutateAsync, pending: m.isPending, error: m.error, done, result, reset: () => { m.reset(); setDone(false) } }
 }

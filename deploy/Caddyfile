@@ -1,0 +1,15 @@
+# Статика Бобуслуг внутри контейнера. HTTPS делает внешний Caddy/nginx на сервере.
+:80 {
+	root * /srv
+	encode zstd gzip
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	header / Cache-Control "no-cache"
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+	}
+	try_files {path} /index.html
+	file_server
+}

@@ -3,12 +3,14 @@ import { supabase } from './supabase'
 /** Bobobank and GPAY on the same server. Empty means the integration is off and the bank sections are hidden. */
 export const BANK_URL = ((import.meta.env.VITE_BANK_URL as string | undefined) ?? '').replace(/\/$/, '')
 export const GPAY_URL = ((import.meta.env.VITE_GPAY_URL as string | undefined) ?? '').replace(/\/$/, '')
+export const TELECOM_URL = ((import.meta.env.VITE_TELECOM_URL as string | undefined) ?? '').replace(/\/$/, '')
 export const bankEnabled = Boolean(BANK_URL)
 
 /** Where each client sends people back after «Войти через Бобуслуги» (never taken from the link itself). */
 export const CLIENTS: Record<string, { name: string; url: string; scope: string[] }> = {
   bank: { name: 'Bobobank', url: BANK_URL, scope: ['ФИО и дату рождения из Бобопаспорта', 'номер и страну паспорта', 'ваши ИП и компании с ИНН', 'баланс псякоинов (для обмена)'] },
   gpay: { name: 'GPAY', url: GPAY_URL, scope: ['имя', 'ваши ИП и компании с ИНН — для реквизитов магазина'] },
+  telecom: { name: 'Бобтелеком', url: TELECOM_URL, scope: ['ФИО и номер Бобопаспорта — номер телефона оформят на вас', 'право показывать ваш номер +123 в кабинете Бобуслуг'] },
 }
 
 export class BankError extends Error {}

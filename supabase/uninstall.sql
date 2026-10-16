@@ -12,7 +12,7 @@ drop policy if exists signatures_update_own on storage.objects;
 drop policy if exists signatures_delete_own on storage.objects;
 drop policy if exists signatures_read on storage.objects;
 
-drop table if exists public.coin_exchanges, public.business_turnover, public.gpay_shops, public.bank_orders,
+drop table if exists public.phone_numbers, public.coin_exchanges, public.business_turnover, public.gpay_shops, public.bank_orders,
   public.bank_links, public.link_codes, public.lawsuits, public.property_offers, public.treasury_tx, public.appointment_slots, public.exam_attempts, public.exam_questions,
   public.audit_log, public.notifications, public.wanted, public.votes, public.candidates,
   public.elections, public.news, public.transactions, public.fines, public.documents, public.applications,
@@ -32,7 +32,7 @@ drop function if exists public.is_superadmin, public.is_staff_of, public.is_pres
   public.set_country_taxes, public.collect_taxes, public.set_registration, public.offer_property, public.respond_offer,
   public.file_lawsuit, public.answer_lawsuit, public.schedule_hearing, public.decide_lawsuit, public.pardon,
   public.amnesty, public.create_link_code, public.request_arrest, public.psy_rate,
-  public.svc_redeem_code, public.svc_person, public.svc_settings, public.svc_fine, public.svc_fine_paid,
+  public.svc_redeem_code, public.svc_set_phone, public.svc_person, public.svc_settings, public.svc_fine, public.svc_fine_paid,
   public.svc_exchange, public.svc_exchange_revert, public.svc_pull_orders, public.svc_order_done,
   public.svc_gpay_shop, public.svc_gpay_turnover cascade;
 drop type if exists public.user_role, public.app_status, public.doc_type, public.fine_kind, public.fine_status,

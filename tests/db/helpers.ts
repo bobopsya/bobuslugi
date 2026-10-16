@@ -27,7 +27,7 @@ export async function resetDb() {
   await sql(
     `truncate public.news, public.elections, public.wanted, public.audit_log, public.appointment_slots,
       public.treasury_tx, public.lawsuits, public.property_offers, public.bank_orders, public.coin_exchanges,
-      public.gpay_shops, public.link_codes, public.bank_links restart identity cascade`,
+      public.gpay_shops, public.link_codes, public.bank_links, public.phone_numbers restart identity cascade`,
   )
   await sql(`update public.app_settings set value = '10000' where key = 'psy_rub_rate'`)
   await sql(`update public.app_settings set value = '' where key = 'invite_code'`)

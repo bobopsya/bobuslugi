@@ -4,7 +4,11 @@ import { pdf, usePdfCtx } from '../../lib/pdf/usePdf'
 import { Card, PageTitle, Row } from '../../components/ui'
 import { useAuth } from '../../lib/auth'
 import { useI18n } from '../../lib/i18n'
-import { useCountryName, useMyDocuments, useMyFines } from '../../lib/queries'
+import { TELECOM_URL } from '../../lib/bank'
+import { useCountryName, useMyDocuments, useMyFines, useMyPhone } from '../../lib/queries'
+
+/** 1239041888800 → «+123 904 188-88-00». */
+const phone = (n: string) => `+123 ${n.slice(3, 6)} ${n.slice(6, 9)}-${n.slice(9, 11)}-${n.slice(11)}`
 
 export function CabinetPage() {
   const { t, coins, date, lang } = useI18n()
@@ -13,6 +17,7 @@ export function CabinetPage() {
   const ctx = usePdfCtx()
   const docs = useMyDocuments()
   const fines = useMyFines()
+  const myPhone = useMyPhone()
   if (!profile) return null
   const passport = (docs.data ?? []).find((d) => d.type === 'passport' && !d.revoked_at)
   const unpaid = (fines.data ?? []).filter((f) => f.status === 'unpaid').reduce((s, f) => s + f.amount, 0)
@@ -35,6 +40,19 @@ export function CabinetPage() {
           {profile.country_code ? countryName(profile.country_code, lang === 'psy') : t('common.noCountry')}
         </Row>
         <Row label={t('cabinet.city')}>{profile.city ?? '—'}</Row>
+        <Row label={t('cabinet.phone')}>
+          {myPhone.data ? (
+            <span data-testid="phone">
+              {phone(myPhone.data.number)} <span className="text-muted">· {myPhone.data.operator}</span>
+            </span>
+          ) : TELECOM_URL ? (
+            <a className="font-semibold text-brand-600 hover:underline" href={TELECOM_URL}>
+              {t('cabinet.phoneGet')}
+            </a>
+          ) : (
+            '—'
+          )}
+        </Row>
         {profile.gov_country_code && <Row label={t('cabinet.govCountry')}>{countryName(profile.gov_country_code, lang === 'psy')}</Row>}
         <Row label={t('home.balance')}>
           <span data-testid="balance">{coins(profile.balance)}</span>

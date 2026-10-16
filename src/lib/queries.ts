@@ -118,6 +118,17 @@ export function useStaffApplications(onlyOpen: boolean) {
   })
 }
 
+/** Номер Бобтелеком, оформленный на гражданина (или null). */
+export function useMyPhone() {
+  const { profile } = useAuth()
+  return useQuery({
+    queryKey: ['phone', profile?.id],
+    enabled: Boolean(profile),
+    queryFn: async () =>
+      unwrap(await supabase.from('phone_numbers').select('number, operator, linked_at').eq('user_id', profile!.id).maybeSingle()) as { number: string; operator: string; linked_at: string } | null,
+  })
+}
+
 export function useMyFines() {
   const { profile } = useAuth()
   return useQuery({
